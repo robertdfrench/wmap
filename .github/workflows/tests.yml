@@ -1,0 +1,16 @@
+name: Tests
+
+on: push
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Tests
+      run: prove -I tests tests
