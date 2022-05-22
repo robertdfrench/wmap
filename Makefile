@@ -1,5 +1,4 @@
 test: tests/run/id_rsa tests/run/id_rsa.pub tests/run/message
-	which rev
 	prove -I tests tests
 
 tests/run/id_rsa tests/run/id_rsa.pub: tests/run/.dir
