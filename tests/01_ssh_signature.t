@@ -11,20 +11,17 @@ if (-e "tests/run/message.sig") {
     unlink("tests/run/message.sig");
 }
 
-my $status = $keygen->sign(
+$keygen->sign(
     "tests/run/id_rsa",
     "namespace",
     "tests/run/message"
 );
-ok(
-    -f "tests/run/message.sig" and $status eq 0,
-    "Messages can be signed"
-);
+ok(-f "tests/run/message.sig", "Messages can be signed");
 
-$status = $keygen->verify(
+my $status = $keygen->verify(
     "example/message.json",
     "https://github.com/robertdfrench",
     'wmap@wmap.dev',
     "tests/allowed_signers"
 );
-ok($status eq 0, "Messages can be verified");
+ok($status == 0, "Messages can be verified");
