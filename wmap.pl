@@ -14,7 +14,7 @@ sub main {
 
 ########################################################################
 package JunkDrawer;
-use JSON;
+use JSON::PP;
 
 sub flatten_json {
     my $json_source = shift;
