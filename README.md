@@ -24,7 +24,8 @@ use a modern filesystem, and he arrived before I had finished running
 I have many disgusting habits, and Perl is not chief among them. 
 
 ### Why not just use GPG?
-Weren't you just complaining about Perl? 
+Weren't you just complaining about Perl? Also do you really want to talk
+to people who [*voluntarily use GPG*][3]?
 
 ### Why not just use S/MIME?
 I would love to, I really would. S/MIME could have been a contender.
@@ -33,17 +34,16 @@ key material, but signed with a certificate authority that my parents'
 phones already trust. I'd toss WMAP in the WTRASHCAN for that.
 
 ### Why not just use Signal?
-Signal kicks ass. Definitely use Signal instead of WMAP. Moxie even has
+Signal kicks ass. I strongly recommend Signal over WMAP. Moxie even has
 a blog post which spells out [why WMAP will never come close to
-competing with Signal][3], and another one which details [how Signal
+competing with Signal][4], and another one which details [how Signal
 spins federated social protocols into Grade A Certified Anti-Static Mops
-for use in their data centers][4]. I use Signal, you'll be happy with
-Signal. 
-
+for use in their data centers][5].
 
 
 <!-- # References -->
 [1]: https://github.com/oxidecomputer/hubris/blob/master/FAQ.mkdn
 [2]: https://github.com/git/git/search?l=Perl&q=git
-[3]: https://moxie.org/2022/01/07/web3-first-impressions.html
-[4]: https://signal.org/blog/the-ecosystem-is-moving/
+[3]: https://moxie.org/2015/02/24/gpg-and-me.html
+[4]: https://moxie.org/2022/01/07/web3-first-impressions.html
+[5]: https://signal.org/blog/the-ecosystem-is-moving/
