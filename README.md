@@ -7,6 +7,18 @@ communication. Many such protocols already exist, the goal of this one
 is to see what can be done with tools that software engineers are likely
 to already have lying around: `git`, `ssh`, etc.
 
+Particularly, WMAP aims to take advantage of the fact that git hosts
+like GitHub, GitLab, etc tend to make users' SSH public keys available
+in a [known location](https://github.com/robertdfrench.keys):
+```mermaid
+sequenceDiagram
+    Alice->>GitHub: Upload SSH Pubkey
+    Alice->>Alice: Sign Message for Bob
+    Alice->>Bob: Send Message to Bob
+    Bob->>GitHub: Fetch Alice's Pubkey
+    Bob->>Bob: Verify Message Came from Alice
+```
+
 
 ## FAQ (Fervently Anticipated Questions)
 *Inspired by those of [Hubris][1]*
