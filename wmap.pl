@@ -14,13 +14,15 @@ sub main {
 
 ########################################################################
 package JunkDrawer;
-use JSON;
+use JSON::PP;
 
 sub flatten_json {
     my $json_source = shift;
 
-    my $json_object = decode_json($json_source);
-    my $normalized_source = to_json($json_object, {canonical => 1});
+    my $jq = JSON::PP->new->utf8->canonical;
+
+    my $json_object = $jq->decode($json_source);
+    my $normalized_source = $jq->encode($json_object);
     return $normalized_source;
 }
 
