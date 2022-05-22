@@ -24,16 +24,16 @@ sub new {
     return bless $self, $class;
 }
 
-sub silent {
+sub invoke {
     my $self = shift;
 
+    my $spell = "$self->{'program'}";
+
     die "Can't fork new Subcommand" unless
-        defined(my $pid = open(CHILD, "-|"));
+        defined(my $pid = open(CHILD, "-|", $spell, @_));
 
     if ($pid) {
-        # parent
         while (<CHILD>) {
-            # ignore
         }
         close(CHILD);
         return $?;
@@ -43,13 +43,34 @@ sub silent {
     }
 }
 
+sub transform {
+    my $self = shift;
+    my $input = shift;
+
+    my $pid = open(CHILD, "|-", "$self->{'program'}", @_);
+
+    die "Can't fork new Subcommand" unless defined($pid);
+
+    if ($pid) {
+        print CHILD $input;
+        close(CHILD);
+        return $?;
+    } else {
+        exec($self->{'program'}, @_) or
+            die "Can't execute $self->{'program'}: $!";
+    }
+}
+
 ########################################################################
 package SSH::Keygen;
 
 sub new {
     my $class = shift;
 
-    my $self = {};
+    my $subcommand = Subcommand->new('ssh-keygen');
+    my $self = {
+        'subcommand' => $subcommand
+    };
 
     return bless $self, $class;
 }
@@ -60,8 +81,12 @@ sub sign {
     my $namespace = shift;
     my $message_path = shift;
 
-    `ssh-keygen -Y sign -f $key_path -n $namespace $message_path`;
-    return $?;
+    return $self->{'subcommand'}->invoke(
+        "-Y", "sign",
+        "-f", $key_path,
+        "-n", $namespace,
+        $message_path
+    );
 }
 
 sub verify {
@@ -72,9 +97,24 @@ sub verify {
     my $allowed_signers_path = shift;
 
     my $signature_path = "$message_path.sig";
+    my $message;
+    {
+        open(my $fh, '<', $message_path) or
+            die "Can't open '$message_path': $!";
 
-    `ssh-keygen -Y verify -f $allowed_signers_path -I $principal -n $namespace -s $signature_path < $message_path`;
-    return $?;
+        local $/ = undef;
+        $message = <$fh>;
+        close($fh);
+    }
+
+    return $self->{'subcommand'}->transform(
+        $message,
+        "-Y", "verify",
+        "-f", $allowed_signers_path,
+        "-I", $principal,
+        "-n", $namespace,
+        "-s", $signature_path
+    );
 }
 
 
