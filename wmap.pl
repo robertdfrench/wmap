@@ -13,6 +13,19 @@ sub main {
 
 
 ########################################################################
+package JunkDrawer;
+use JSON;
+
+sub flatten_json {
+    my $json_source = shift;
+
+    my $json_object = decode_json($json_source);
+    my $normalized_source = to_json($json_object, {canonical => 1});
+    return $normalized_source;
+}
+
+
+########################################################################
 package Subcommand;
 
 sub new {
@@ -60,6 +73,7 @@ sub transform {
             die "Can't execute $self->{'program'}: $!";
     }
 }
+
 
 ########################################################################
 package SSH::Keygen;
