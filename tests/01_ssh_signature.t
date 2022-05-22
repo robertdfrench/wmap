@@ -19,7 +19,7 @@ $keygen->sign(
 ok(-f "tests/run/message.sig", "Messages can be signed");
 
 my $status = $keygen->verify(
-    "example/message.json",
+    "example/message.json.flat",
     "https://github.com/robertdfrench",
     'wmap@wmap.dev',
     "tests/allowed_signers"
