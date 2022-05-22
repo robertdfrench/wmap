@@ -1,6 +1,12 @@
 # WMAP
 *Web-based Message Authentication Protocol*
 
+This repository contains a specification and reference implementation
+for a protocol which can be used for relatively secure internet
+communication. Many such protocols already exist, the goal of this one
+is to see what can be done with tools that software engineers are likely
+to already have lying around: `git`, `ssh`, etc.
+
 
 ## FAQ (Fervently Anticipated Questions)
 *Inspired by those of [Hubris][1]*
