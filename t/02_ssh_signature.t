@@ -3,14 +3,10 @@ use strict;
 use warnings;
 
 use Test::Simple tests => 2;
-use File::Path qw(make_path);
 
 require "./wmap";
 
 # Cleanup
-unless (-e "t/run") {
-    make_path("t/run");
-}
 if (-e "t/run/message.sig") {
     unlink("t/run/message.sig");
 }
