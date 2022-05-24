@@ -7,6 +7,9 @@ use Test::Simple tests => 2;
 require "./wmap.pl";
 
 # Cleanup
+unless (-e "t/run") {
+    `mkdir -p t/run`
+}
 if (-e "t/run/message.sig") {
     unlink("t/run/message.sig");
 }
