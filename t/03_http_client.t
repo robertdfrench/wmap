@@ -4,15 +4,15 @@ use warnings;
 
 use Test::Simple tests => 1;
 
-require WMAP;
+require "./wmap.pl";
 
 my $http_client = HttpClient->new();
-if (-e "tests/run/index.html") {
-    unlink("tests/run/index.html");
+if (-e "t/run/index.html") {
+    unlink("t/run/index.html");
 }
 $http_client->download(
     "https://example.org/index.html",
-    "tests/run/index.html"
+    "t/run/index.html"
 );
 
-ok(-f "tests/run/index.html", "Web page was downloaded");
+ok(-f "t/run/index.html", "Web page was downloaded");

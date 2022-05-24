@@ -19,6 +19,9 @@ sequenceDiagram
     Bob->>Bob: Verify Message Came from Alice
 ```
 
+The test suite for the reference implementation can be run via `prove`.
+If you have `git` installed, it's likely that you also have `prove`
+somewhere on your system.
 
 ## FAQ (Fervently Anticipated Questions)
 *Inspired by those of [Hubris][1]*

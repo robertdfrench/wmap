@@ -9,6 +9,7 @@ package main;
 main() unless caller();
 
 sub main {
+    print "Hello, World!";
 }
 
 
