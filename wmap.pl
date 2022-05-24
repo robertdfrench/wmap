@@ -13,6 +13,30 @@ sub main {
 
 
 ########################################################################
+package HttpClient;
+
+sub new {
+    my $class = shift;
+
+    my $self = { };
+
+    return bless $self, $class;
+}
+
+sub download {
+    my $self = shift;
+    my $remote_url = shift;
+    my $local_path = shift;
+
+    my $curl = Subcommand->new("curl");
+
+    return $curl->invoke(
+        "-s",$remote_url,
+        "-o",$local_path
+    );
+}
+
+########################################################################
 package JunkDrawer;
 use JSON::PP;
 
