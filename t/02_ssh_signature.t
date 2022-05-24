@@ -5,7 +5,7 @@ use warnings;
 use Test::Simple tests => 2;
 use File::Path qw(make_path);
 
-require "./wmap.pl";
+require "./wmap";
 
 # Cleanup
 unless (-e "t/run") {

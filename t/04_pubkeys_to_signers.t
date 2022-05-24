@@ -4,7 +4,7 @@ use warnings;
 
 use Test::Simple tests => 1;
 
-require "./wmap.pl";
+require "./wmap";
 
 my $pubkey = 'ssh-rsa ABC123 user@host';
 my $signer = AllowedSigners::convert("principal", "namespace", $pubkey);

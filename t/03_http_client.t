@@ -4,7 +4,7 @@ use warnings;
 
 use Test::Simple tests => 1;
 
-require "./wmap.pl";
+require "./wmap";
 
 my $http_client = HttpClient->new();
 if (-e "t/run/index.html") {

@@ -4,7 +4,7 @@ use warnings;
 
 use Test::Simple tests => 2;
 
-require "./wmap.pl";
+require "./wmap";
 
 my $version = WMAP::version();
 ok($version =~ /\d+.\d+.\d+/, "Version is numeric");

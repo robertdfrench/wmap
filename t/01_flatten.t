@@ -4,7 +4,7 @@ use warnings;
 
 use Test::Simple tests => 1;
 
-require "./wmap.pl";
+require "./wmap";
 
 my $sloppy_json = "{\n\t\"b\":     2,\n\"a\":1\n\t}";
 my $flattened_json = JunkDrawer::flatten_json($sloppy_json);
