@@ -3,12 +3,13 @@ use strict;
 use warnings;
 
 use Test::Simple tests => 2;
+use File::Path qw(make_path);
 
 require "./wmap.pl";
 
 # Cleanup
 unless (-e "t/run") {
-    `mkdir -p t/run`
+    make_path("t/run");
 }
 if (-e "t/run/message.sig") {
     unlink("t/run/message.sig");
@@ -30,7 +31,7 @@ $keygen->sign(
 ok(-f "t/run/message.sig", "Messages can be signed");
 
 my $status = $keygen->verify(
-    "example/message.json.flat",
+    "example/message.json",
     "https://github.com/robertdfrench",
     'wmap@wmap.dev',
     "t/allowed_signers"
