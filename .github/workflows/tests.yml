@@ -16,4 +16,4 @@ jobs:
       run: git --version
 
     - name: Run Tests
-      run: prove
+      run: make test
