@@ -14,6 +14,19 @@ sub main {
 
 
 ########################################################################
+package AllowedSigners;
+
+sub convert {
+    my $principal = shift;
+    my $namespace = shift;
+    my $pubkey = shift;
+
+    my ($algorithm, $material) = split(/ /, $pubkey);
+
+    return "$principal namespaces=\"$namespace\" $algorithm $material";
+}
+
+########################################################################
 package HttpClient;
 
 sub new {
