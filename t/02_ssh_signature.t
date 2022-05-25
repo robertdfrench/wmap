@@ -17,15 +17,15 @@ unless (-e "t/run/id_rsa") {
     `ssh-keygen -f t/run/id_rsa -N ''`
 }
 
-# Tests
-#my $keygen = SSH::Keygen->new();
-#$keygen->sign(
-#    "t/run/id_rsa",
-#    "namespace",
-#    "t/run/message"
-#);
-#ok(-f "t/run/message.sig", "Messages can be signed");
-#
+ Tests
+my $keygen = SSH::Keygen->new();
+$keygen->sign(
+    "t/run/id_rsa",
+    "namespace",
+    "t/run/message"
+);
+ok(-f "t/run/message.sig", "Messages can be signed");
+
 #my $status = $keygen->verify(
 #    "example/message.json",
 #    "https://github.com/robertdfrench",
