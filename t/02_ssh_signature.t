@@ -24,10 +24,10 @@ $keygen->sign(
 );
 ok(-f "t/run/message.sig", "Messages can be signed");
 
-#my $status = $keygen->verify(
-#    "example/message.json",
-#    "https://github.com/robertdfrench",
-#    'wmap@wmap.dev',
-#    "t/allowed_signers"
-#);
-#ok($status == 0, "Messages can be verified");
+my $status = $keygen->verify(
+    "example/message.json",
+    "https://github.com/robertdfrench",
+    'wmap@wmap.dev',
+    "t/allowed_signers"
+);
+ok($status == 0, "Messages can be verified");
