@@ -6,16 +6,16 @@ use Test::Simple tests => 2;
 
 require "./wmap";
 
- Cleanup
+# Cleanup
 if (-e "t/run/message.sig") {
     unlink("t/run/message.sig");
 }
-unless (-e "t/run/message") {
-    `echo "Hello, World" > t/run/message`
-}
-unless (-e "t/run/id_rsa") {
-    `ssh-keygen -f t/run/id_rsa -N ''`
-}
+#unless (-e "t/run/message") {
+#    `echo "Hello, World" > t/run/message`
+#}
+#unless (-e "t/run/id_rsa") {
+#    `ssh-keygen -f t/run/id_rsa -N ''`
+#}
 
 # Tests
 #my $keygen = SSH::Keygen->new();
