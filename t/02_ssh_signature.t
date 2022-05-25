@@ -17,7 +17,7 @@ unless (-e "t/run/id_rsa") {
     `ssh-keygen -f t/run/id_rsa -N ''`
 }
 
- Tests
+# Tests
 my $keygen = SSH::Keygen->new();
 $keygen->sign(
     "t/run/id_rsa",
