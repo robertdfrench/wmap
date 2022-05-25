@@ -7,27 +7,27 @@ use Test::Simple tests => 2;
 require "./wmap";
 
 # Cleanup
-if (-e "t/run/message.sig") {
-    unlink("t/run/message.sig");
+if (-e "tests/run/message.sig") {
+    unlink("tests/run/message.sig");
 }
-unless (-e "t/run/message") {
-    `echo "Hello, World" > t/run/message`
+unless (-e "tests/run/message") {
+    `echo "Hello, World" > tests/run/message`
 }
 
 
 # Tests
 my $keygen = SSH::Keygen->new();
 $keygen->sign(
-    "t/run/id_rsa",
+    "tests/run/id_rsa",
     "namespace",
-    "t/run/message"
+    "tests/run/message"
 );
-ok(-f "t/run/message.sig", "Messages can be signed");
+ok(-f "tests/run/message.sig", "Messages can be signed");
 
 my $status = $keygen->verify(
     "example/message.json",
     "https://github.com/robertdfrench",
     'wmap@wmap.dev',
-    "t/allowed_signers"
+    "tests/allowed_signers"
 );
 ok($status == 0, "Messages can be verified");

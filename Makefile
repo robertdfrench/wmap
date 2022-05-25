@@ -1,12 +1,12 @@
-test: t/run/id_rsa
-	prove
+test: tests/run/id_rsa
+	prove tests/
 
-t/run/id_rsa t/run/id_rsa.pub: t/run/.dir
-	ssh-keygen -f t/run/id_rsa -N ''
+tests/run/id_rsa tests/run/id_rsa.pub: tests/run/.dir
+	ssh-keygen -f tests/run/id_rsa -N ''
 
-t/run/.dir:
-	mkdir -p t/run/
-	touch t/run/.dir
+tests/run/.dir:
+	mkdir -p tests/run/
+	touch tests/run/.dir
 
 clean:
-	rm -rf t/run/
+	rm -rf tests/run/
