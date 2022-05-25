@@ -7,12 +7,12 @@ use Test::Simple tests => 1;
 require "./wmap";
 
 my $http_client = HttpClient->new();
-if (-e "t/run/index.html") {
-    unlink("t/run/index.html");
+if (-e "tests/run/index.html") {
+    unlink("tests/run/index.html");
 }
 $http_client->download(
     "https://example.org/index.html",
-    "t/run/index.html"
+    "tests/run/index.html"
 );
 
-ok(-f "t/run/index.html", "Web page was downloaded");
+ok(-f "tests/run/index.html", "Web page was downloaded");

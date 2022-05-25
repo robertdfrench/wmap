@@ -1,4 +1,4 @@
-name: Tests
+name: Test Suite
 
 on: push
 
@@ -6,11 +6,11 @@ jobs:
   test:
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
+        platform: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.platform }}
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Run Tests
-      run: prove
+      
+    - name: make test
+      run: make test
