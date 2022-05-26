@@ -10,11 +10,13 @@ WMAP messages have the following structure:
 ```json
 {
     "from": "https://github.com/robertdfrench",
-    "to": "https://example.org/world",
-    "when": "2022-05-22T14:50:56-04:00",
-    "body": "Hello!"
+    "to": "https://example.org/alice",
+    "message": "Hello!",
+    "signature": "U1NIU0lHAA...jiam+SDCzaoFiSvw==",
+    "wmap": "v0.1.0"
 }
 ```
 where `from` is the URL to your page on a WMAP-compatible website, `to`
-is the URL of the recipient's page, `when` is an ISO8601 timestamp, and
-`body` is a string that you would like to send.
+is the URL of the recipient's page, `message` is a string that you would
+like to send, `signature` is a WMAP-specific SSH signature, and `wmap`
+is the version of the protocol we're using.
