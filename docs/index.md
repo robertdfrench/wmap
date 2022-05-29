@@ -20,3 +20,26 @@ where `from` is the URL to your page on a WMAP-compatible website, `to`
 is the URL of the recipient's page, `message` is a string that you would
 like to send, `signature` is a WMAP-specific SSH signature, and `wmap`
 is the version of the protocol we're using.
+
+
+### Informal Specification
+
+
+#### Profile URL
+A *profile URL* is an `https://` url which is valid, and for which a
+corresponding *pubkey URL* exists:
+
+* Profile URL: `https://example.org/alice`
+* Pubkey URL: `https://example.org/alice.keys`
+
+In WMAP, a *profile URL* is roughly equivalent to a username or an email
+address: if I want to refer to someone, I do it by using their *profile
+URL*.
+
+
+#### Pubkey URL
+A *pubkey URL* is an `https://` url which is obtained by appending
+the string ".keys" to a user's profile URL. This URL should support
+`GET` queries, and should return a `text/plain` document containing a
+list of SSH public keys in the [`authorized_keys` file
+format](https://man.openbsd.org/sshd#AUTHORIZED_KEYS_FILE_FORMAT).
