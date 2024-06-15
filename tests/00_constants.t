@@ -4,14 +4,14 @@
 # Perl's Test::Simple module works though.
 use strict;
 use warnings;
-
 use Test::Simple tests => 2;
-
 require "./wmap";
+
 
 # Test 1: Assert that the Version string is numeric.
 my $version = WMAP::version();
 ok($version =~ /\d+.\d+.\d+/, "Version is numeric");
+
 
 # Test 2: Assert that the ssh namespace is wmap@wmap.dev.
 my $namespace = WMAP::namespace();
