@@ -17,7 +17,7 @@ open(my $pubkey, '<', "tests/run/id_rsa.pub");
 my $key_material = <$pubkey>;
 close($pubkey);
 
-my $allowed_signer = "username namespaces=\"namespace\" " . $key_material;
+my $allowed_signer = "principal namespaces=\"namespace\" " . $key_material;
 open(my $allowed_signers, '>', 'tests/run/allowed_signers');
 print $allowed_signers $allowed_signer;
 close($allowed_signers);
@@ -37,7 +37,7 @@ ok(-f "tests/run/message.sig", "Messages can be signed");
 # Test 2: The signature file and the message can be verified
 my $status = $keygen->verify(
     "tests/run/message",
-    "username",
+    "principal",
     'namespace',
     "tests/run/allowed_signers"
 );
