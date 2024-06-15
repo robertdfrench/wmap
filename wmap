@@ -51,21 +51,6 @@ sub download {
 }
 
 ########################################################################
-package JunkDrawer;
-use JSON::PP;
-
-sub flatten_json {
-    my $json_source = shift;
-
-    my $jq = JSON::PP->new->utf8->canonical;
-
-    my $json_object = $jq->decode($json_source);
-    my $normalized_source = $jq->encode($json_object);
-    return $normalized_source;
-}
-
-
-########################################################################
 package Subcommand;
 
 sub new {
