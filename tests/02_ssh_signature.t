@@ -9,12 +9,19 @@ require "./wmap";
 
 
 # Setup
-if (-e "tests/run/message.sig") {
-    unlink("tests/run/message.sig");
-}
-unless (-e "tests/run/message") {
-    `echo "Hello, World" > tests/run/message`
-}
+`mkdir tests/run`;
+`echo "Hello, World" > tests/run/message`;
+`ssh-keygen -f tests/run/id_rsa -N ''`;
+
+open(my $pubkey, '<', "tests/run/id_rsa.pub");
+my $key_material = <$pubkey>;
+close($pubkey);
+
+my $allowed_signer = "username namespaces=\"namespace\" " . $key_material;
+open(my $allowed_signers, '>', 'tests/run/allowed_signers');
+print $allowed_signers $allowed_signer;
+close($allowed_signers);
+
 my $keygen = SSH::Keygen->new();
 
 
@@ -29,9 +36,9 @@ ok(-f "tests/run/message.sig", "Messages can be signed");
 
 # Test 2: The signature file and the message can be verified
 my $status = $keygen->verify(
-    "example/message.json",
-    "https://github.com/robertdfrench",
-    'wmap@wmap.dev',
-    "tests/allowed_signers"
+    "tests/run/message",
+    "username",
+    'namespace',
+    "tests/run/allowed_signers"
 );
 ok($status == 0, "Messages can be verified");
