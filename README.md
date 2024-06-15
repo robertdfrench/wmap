@@ -29,7 +29,7 @@ WMAP messages have the following structure:
 ```json
 {
     "author": "https://github.com/robertdfrench",
-    "message": "Cool pic of Mt. Le Conte!",
+    "message": "SGVsbG8sIHdvcmxkLgo=",
     "signature": "U1NIU0lHAA...jiam+SDCzaoFiSvw==",
 }
 ```
