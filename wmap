@@ -1,169 +1,63 @@
-#!/usr/bin/perl
-use strict;
-use warnings;
+#!/bin/sh
 
+NAMESPACE="wmap@wmap.dev"
+VERSION="0.1.0"
 
-########################################################################
-package main;
+main() {
+	local profile=$1
 
-main() unless caller();
-
-sub main {
-    print "Hello, World!";
+	allowed_signers "${profile}"
 }
 
 
-########################################################################
-package AllowedSigners;
+# Return true if we have "tool" installed
+we_have() {
+	local tool=$1
 
-sub convert {
-    my $principal = shift;
-    my $namespace = shift;
-    my $pubkey = shift;
-
-    my ($algorithm, $material) = split(/ /, $pubkey);
-
-    return "$principal namespaces=\"$namespace\" $algorithm $material";
+	command -v "${tool}" >/dev/null 2>&1
 }
 
-########################################################################
-package HttpClient;
+# Return true if platform is "platform"
+platform_is() {
+	local platform=$1
 
-sub new {
-    my $class = shift;
-
-    my $self = { };
-
-    return bless $self, $class;
+	uname | grep "${platform}" >/dev/null 2>&1
 }
 
-sub download {
-    my $self = shift;
-    my $remote_url = shift;
-    my $local_path = shift;
+# Return the contents of the public keys associated with "profile".
+fetch_keys() {
+	local profile=$1
 
-    my $curl = Subcommand->new("curl");
+	local pubkeys_url="${profile}.keys"
 
-    return $curl->invoke(
-        "-s",$remote_url,
-        "-o",$local_path
-    );
+	if we_have curl; then
+		curl --silent "${pubkeys_url}"
+	elif we_have wget; then
+		wget -qO- "${pubkeys_url}"
+	elif platform_is OpenBSD; then
+		# OpenBSD ships with an ftp tool that doubles as an https
+		# client.
+		ftp -o - "${pubkeys_url}"
+	else
+		echo "Error: No appropriate http client could be found" >&2
+		exit 1
+	fi
 }
 
-########################################################################
-package Subcommand;
+# Return an ALLOWED SIGNERS file for "profile".
+allowed_signers() {
+	local profile=$1
 
-sub new {
-    my $class = shift;
-    my $program = shift;
-
-    my $self = {'program' => $program};
-
-    return bless $self, $class;
+	fetch_keys "${profile}" | while IFS= read -r line; do
+		echo "${profile} namespaces=\"${NAMESPACE}\" ${line}"
+	done
 }
 
-sub invoke {
-    my $self = shift;
-
-    my $spell = "$self->{'program'}";
-
-    die "Can't fork new Subcommand" unless
-        defined(my $pid = open(CHILD, "-|", $spell, @_));
-
-    if ($pid) {
-        while (<CHILD>) {
-        }
-        close(CHILD);
-        return $?;
-    } else {
-        exec($self->{'program'}, @_) or
-            die "Can't exec $self->{'program'}: $!";
-    }
-}
-
-sub transform {
-    my $self = shift;
-    my $input = shift;
-
-    my $pid = open(CHILD, "|-", "$self->{'program'}", @_);
-
-    die "Can't fork new Subcommand" unless defined($pid);
-
-    if ($pid) {
-        print CHILD $input;
-        close(CHILD);
-        return $?;
-    } else {
-        exec($self->{'program'}, @_) or
-            die "Can't execute $self->{'program'}: $!";
-    }
-}
-
-
-########################################################################
-package SSH::Keygen;
-
-sub new {
-    my $class = shift;
-
-    my $subcommand = Subcommand->new('ssh-keygen');
-    my $self = {
-        'subcommand' => $subcommand
-    };
-
-    return bless $self, $class;
-}
-
-sub sign {
-    my $self = shift;
-    my $key_path = shift;
-    my $namespace = shift;
-    my $message_path = shift;
-
-    return $self->{'subcommand'}->invoke(
-        "-Y", "sign",
-        "-f", $key_path,
-        "-n", $namespace,
-        $message_path
-    );
-}
-
-sub verify {
-    my $self = shift;
-    my $message_path = shift;
-    my $principal = shift;
-    my $namespace = shift;
-    my $allowed_signers_path = shift;
-
-    my $signature_path = "$message_path.sig";
-    my $message;
-    {
-        open(my $fh, '<', $message_path) or
-            die "Can't open '$message_path': $!";
-
-        local $/ = undef;
-        $message = <$fh>;
-        close($fh);
-    }
-
-    return $self->{'subcommand'}->transform(
-        $message,
-        "-Y", "verify",
-        "-f", $allowed_signers_path,
-        "-I", $principal,
-        "-n", $namespace,
-        "-s", $signature_path
-    );
-}
-
-
-########################################################################
-package WMAP;
-
-sub version {
-    return "0.1.0";
-}
-
-sub namespace {
-    return 'wmap@wmap.dev';
-}
+# Check if the script is being executed or sourced. We only want to invoke
+# `main` if the script is being executed. This is akin to Python's 
+# 	if __name__ == "__main__":
+# pattern.
+(return 0 2>/dev/null) && sourced=1 || sourced=0
+if [ "${sourced}" -eq 0 ]; then
+	main $*
+fi
