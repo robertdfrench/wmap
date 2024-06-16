@@ -82,6 +82,9 @@ class Profile:
             ], input=data)
             return results.returncode == 0
 
+    def __str__(self) -> str:
+        return self.username
+
 
 @dataclass
 class PrivateKey:
@@ -112,6 +115,9 @@ class Signature:
             decoded = str(base64.b64decode(self.content), 'utf-8')
             f.write(decoded)
 
+    def __str__(self) -> str:
+        return self.content
+
 
 @dataclass
 class Message:
@@ -125,6 +131,13 @@ class Message:
             body = f.read()
         signature = Signature.load(path + ".sig")
         return cls(profile, body, signature)
+
+    def into_dict(self) -> dict[str, str]:
+        return {
+            'profile': str(self.profile),
+            'body': str(base64.b64encode(self.body), 'utf-8'),
+            'signature': str(self.signature)
+        }
 
 
 if __name__ == "__main__":  # pragma: no cover

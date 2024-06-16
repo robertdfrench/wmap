@@ -123,3 +123,12 @@ def test_message_load_from_files():
     assert message.body == expected_body
     signature = wmap.Signature.load("tests/message.txt.sig")
     assert message.signature == signature
+
+
+def test_message_into_dict():
+    profile = wmap.Profile("robertdfrench")
+    message = wmap.Message.load(profile, "tests/message.txt")
+    d = message.into_dict()
+    assert d['profile'] == "robertdfrench"
+    assert d['body'] == "TXkgbmFtZSBpcyBSb2JlcnQgRnJlbmNoLCBhbmQgSSBob3BlIHlvdSB0aGluayBXTUFQIGlzIGFzIG5lYXQgYXMgSSBkbyEK"  # noqa: E501
+    assert d['signature'] == "LS0tLS1CRUdJTiBTU0ggU0lHTkFUVVJFLS0tLS0KVTFOSVUwbEhBQUFBQVFBQUFSY0FBQUFIYzNOb0xYSnpZUUFBQUFNQkFBRUFBQUVCQU16eGUrdGo4Nk44TnhvajRXOUJWWApuSG56VzBScXlrcmtDZ2xvZFBNbjd5Y2ZMcWpTdGNBTE15STBsZ24zSmVIZHU4R0xiTlpYMkNlL0huN0hHMWVtNERUN096CnhaUXpwcTZ2SmR0MFMzVi8zK0w2TW1URC9JQURSNzRYblIyRWtZUGg0UXJ1QzhSMTVuZ0tKQ29xcC8vWEN1d3pBWmlzQjQKNG1OdXJWTWlGR01pQkpnWUpJUEFKcjk3OWdkdm1hM1hvWnFGaTUrdkc4TmhRMXlQTHZuRTZCaHdLQjdqU0xjQllIVDl2UwpJeDdKOCswRjNYZE9Xd0VScGZwQzhUeS8zVVhtUWVMa1RzQi9INWNGRFB4RHJLMjVqVWpvZDhleGtYajJERC9VYW44VWhrCjZDVGJEeFRmNlRKK3ZwSXhSM2VRVWVDU1BpS2prOTNzaVJCcUY0NzhFQUFBQU5kMjFoY0VCM2JXRndMbVJsZGdBQUFBQUEKQUFBR2MyaGhOVEV5QUFBQkZBQUFBQXh5YzJFdGMyaGhNaTAxTVRJQUFBRUFZUnhwYnc5N2pUcXNsNG5Da3MzYXpDKytjdQpJV2lOZk9Mc3lqdGFUcnJ0S0ZEOWd2YTRLdTNpVTVSWS9oVVZmaTl6WkxyamJrem00aDJaOTUwVjZJK2dWNmNEQk9wQXppClNNOFduTTJzelFBa3FPQlVlQVFVNEExd0VjOXpMREJnUnNyU1FIY1lldk1uNWI1anNnMlNPOTJoemZRK3BGS0RBbi8xaHAKbmhpa0d2SDZ2ckZiY2ZFQ3QxYUlwR0pRcVZ3dlZ2b0h4dVpoYlNjTjNFV0ZSdDBpUEE5dU1GeFp3T1dyMzladWlPRkFuawpXendRWUxsQ2RCQktUM01VWlVpWHBmWkQyQ2tEYlFxZEF6Y2w1bTByeFRkbDlWZG9BVGtwVjM2SEhldHNpbmx4TUl4cGk4CnBvaGtTV0hrN05RdlBtMWlHRUZTUS8zS1RUa281SENxWDU2UT09Ci0tLS0tRU5EIFNTSCBTSUdOQVRVUkUtLS0tLQo="  # noqa: E501
