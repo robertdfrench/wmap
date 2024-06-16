@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# Copyright 2024 Robert D. French
 import argparse
 import base64
 from dataclasses import dataclass
@@ -16,6 +21,17 @@ NAMESPACE = "wmap@wmap.dev"
 
 
 def main():  # pragma: no cover
+    """
+    Application entrypoint.
+
+    This is the application entrypoint (called at the end of this file in
+    the traditional python fashion). It assembles the command line interface
+    via argparse, and then passes control to one of the subcommand functions:
+    sign, verify, or extract.
+
+    QA note: This function is not covered in unit testing as it is part of the
+    user interface.
+    """
     parser = argparse.ArgumentParser(
             description='wmap.py: A tool to sign or verify files.')
     subparsers = parser.add_subparsers(dest='command', help='sub-command help')
@@ -52,12 +68,24 @@ def main():  # pragma: no cover
     elif args.command == 'verify':
         verify(args.file)
     elif args.command == 'extract':
-        extract(args.file)
+        extract(args.file, args.skip_validation)
     else:
         parser.print_help()
 
 
 def sign(username: str, key: str, file: str):  # pragma: no cover
+    """
+    Produce a signed, WMAP-formatted version of the input file.
+
+    Parameters:
+    - username: the GitHub username of the author of `file`
+    - key: the path to the ssh private key of the author. The corresponding
+      public key must be installed on the author's GitHub account.
+    - file: the path to the file being signed
+
+    Upon success, a WMAP-formatted file called `file`.wmap will be created in
+    the same directory as `file`.
+    """
     profile = Profile(username)
     private_key = PrivateKey(profile, key)
     private_key.sign(file)
@@ -67,6 +95,18 @@ def sign(username: str, key: str, file: str):  # pragma: no cover
 
 
 def verify(file: str):  # pragma: no cover
+    """
+    Verify the integrity of a WMAP-formatted file.
+
+    Parameters:
+    - file: the path to a WMAP-formatted file
+
+    If the file cannot be verified, this function will cause wmap to exit
+    nonzero.
+
+    QA note: This function is not covered in unit testing as it is part of the
+    user interface.
+    """
     message = Message.load(file)
     message.signature.dump(file + ".sig")
     valid = message.profile.verify_signed_data(message.body, file + ".sig")
@@ -76,18 +116,42 @@ def verify(file: str):  # pragma: no cover
         sys.exit(1)
 
 
-def extract(file: str):  # pragma: no cover
-    verify(file)
+def extract(file: str, skip_validation: bool = False):  # pragma: no cover
+    """
+    Verify, decode, and print the body of a WMAP-formatted file.
+
+    Parameters:
+    - file: the path to a WMAP-formatted file
+    - skip_validation: allow wmap to extract the body from an invalid file.
+
+    QA note: This function is not covered in unit testing as it is part of the
+    user interface.
+    """
+    if not skip_validation:
+        verify(file)
     message = Message.load(file)
     print(str(message.body, 'utf-8'))
 
 
 class Algorithm(Enum):
+    """
+    Allowable algorithms for SSH signing keys.
+    """
     RSA = auto()
     ED25519 = auto()
 
     @classmethod
     def parse(cls, string: str) -> 'Algorithm':
+        """
+        Attempt to parse a string into one of these Algorithm enum instances.
+
+        Parameters:
+        - string: a string which may or may not be a valid SSH signing
+          algorithm.
+
+        Raises:
+        - Exception: if the string does not match an allowed algorithm.
+        """
         if string == "ssh-rsa":
             return cls.RSA
         elif string == "ssh-ed25519":
@@ -104,17 +168,44 @@ class Algorithm(Enum):
 
 @dataclass
 class AuthorizedKey:
+    """
+    Representation of an Authorized Key entry, as seen in an
+    ~/.ssh/authorized_keys file or on a user's GitHub profile.
+    """
     algorithm: Algorithm
     material: str
     comment: str
 
     @classmethod
     def parse(cls, string: str) -> 'AuthorizedKey':
+        """
+        Parse an authorized keys entry into its constituent parts. Such entries
+        take the following form:
+
+            ssh-rsa ABC...123 username@example.com (other comments)
+
+        Parameters:
+        - string: a string which ought to be a normal-looking authorized keys
+          entry.
+        """
         parts = string.split()
         algorithm = Algorithm.parse(parts[0])
         return cls(algorithm, parts[1], " ".join(parts[2:]))
 
     def into_allowed_signer(self, profile: 'Profile') -> str:
+        """
+        Convert this authorized keys entry into an ALLOWED SIGNERS entry. Such
+        records take the following form:
+
+            username namespacs="wmap@wmap.dev" ssh-rsa ABC...123
+
+        More information on ALLOWED SIGNERS can be found in the `ssh-keygen(1)`
+        manual page.
+
+        Parameters:
+        - profile: the profile of the GitHub user for whom we'd like to build
+          the ALLOWED SIGNERS record.
+        """
         principal = profile.username
         algorithm = str(self.algorithm)
         material = self.material
