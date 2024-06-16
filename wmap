@@ -4,6 +4,7 @@ from enum import Enum, auto
 from urllib import request
 from typing import List
 import base64
+import json
 import subprocess
 import tempfile
 
@@ -107,7 +108,8 @@ class Signature:
     @classmethod
     def load(cls, path: str) -> 'Signature':
         with open(path) as f:
-            content = str(base64.b64encode(bytes(f.read(), 'utf-8')), 'utf-8')
+            raw_text = f.read()
+            content = str(base64.b64encode(bytes(raw_text, 'utf-8')), 'utf-8')
             return cls(content)
 
     def dump(self, path: str):
@@ -126,11 +128,20 @@ class Message:
     signature: Signature
 
     @classmethod
-    def load(cls, profile: Profile, path: str) -> 'Message':
+    def from_signed_file(cls, profile: Profile, path: str) -> 'Message':
         with open(path, 'rb') as f:
             body = f.read()
         signature = Signature.load(path + ".sig")
         return cls(profile, body, signature)
+
+    @classmethod
+    def load(cls, path: str) -> 'Message':
+        with open(path) as f:
+            d = json.load(f)
+            profile = Profile(d['profile'])
+            signature = Signature(d['signature'])
+            body = base64.b64decode(d['body'])
+            return cls(profile, body, signature)
 
     def into_dict(self) -> dict[str, str]:
         return {
@@ -138,6 +149,10 @@ class Message:
             'body': str(base64.b64encode(self.body), 'utf-8'),
             'signature': str(self.signature)
         }
+
+    def dump(self, path: str):
+        with open(path, 'w') as f:
+            json.dump(self.into_dict(), f)
 
 
 if __name__ == "__main__":  # pragma: no cover
