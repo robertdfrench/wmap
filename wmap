@@ -2,8 +2,12 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from urllib import request
+import subprocess
+import base64
+
 
 NAMESPACE = "wmap@wmap.dev"
+
 
 class Algorithm(Enum):
     RSA = auto()
@@ -58,6 +62,37 @@ class Profile:
 
     def allowed_signers(self):
         return [k.into_allowed_signer(self) for k in self.authorized_keys()]
+
+
+@dataclass
+class PrivateKey:
+    profile: Profile
+    path: str
+
+    def sign(self, file):
+        subprocess.run([
+            'ssh-keygen', '-Y', 'sign',
+            '-f', self.path,
+            '-n', NAMESPACE,
+            file
+        ])
+
+
+@dataclass
+class Signature:
+    content: str
+
+    @classmethod
+    def load(cls, path):
+        with open(path) as f:
+            content = str(base64.b64encode(bytes(f.read(), 'utf-8')), 'utf-8')
+            return cls(content)
+
+    def dump(self, path):
+        with open(path, 'w') as f:
+            decoded = str(base64.b64decode(self.content), 'utf-8')
+            f.write(decoded)
+
 
 if __name__ == "__main__":
 	print("Hello")
