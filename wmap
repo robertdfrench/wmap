@@ -1,15 +1,67 @@
 #!/usr/bin/env python3
+import argparse
+import base64
 from dataclasses import dataclass
 from enum import Enum, auto
-from urllib import request
-from typing import List
-import base64
 import json
+from typing import List
+import os
+from urllib import request
 import subprocess
+import sys
 import tempfile
 
 
 NAMESPACE = "wmap@wmap.dev"
+
+
+def main():  # pragma: no cover
+    parser = argparse.ArgumentParser(
+            description='wmap.py: A tool to sign or verify files.')
+    subparsers = parser.add_subparsers(dest='command', help='sub-command help')
+
+    # Subparser for the 'sign' command
+    parser_sign = subparsers.add_parser(
+            'sign', help='Sign a file')
+    parser_sign.add_argument(
+            'username', type=str, help='GitHub username')
+    parser_sign.add_argument(
+            'key', type=str, help='SSH private key to use for signing')
+    parser_sign.add_argument(
+            'file', type=str, help='File to be signed')
+
+    # Subparser for the 'verify' command
+    parser_verify = subparsers.add_parser(
+            'verify', help='Verify a signed file')
+    parser_verify.add_argument(
+            'file', type=str, help='Signed file to be verified')
+
+    args = parser.parse_args()
+
+    if args.command == 'sign':
+        sign(args.username, args.key, args.file)
+    elif args.command == 'verify':
+        verify(args.file)
+    else:
+        parser.print_help()
+
+
+def sign(username: str, key: str, file: str):  # pragma: no cover
+    profile = Profile(username)
+    private_key = PrivateKey(profile, key)
+    private_key.sign(file)
+    message = Message.from_signed_file(profile, file)
+    message.dump(file + ".wmap")
+    os.remove(file + ".sig")
+
+
+def verify(file: str):  # pragma: no cover
+    message = Message.load(file)
+    message.signature.dump(file + ".sig")
+    valid = message.profile.verify_signed_data(message.body, file + ".sig")
+    os.remove(file + ".sig")
+    if not valid:
+        sys.exit(1)
 
 
 class Algorithm(Enum):
@@ -156,4 +208,4 @@ class Message:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    print("Hello")
+    main()
