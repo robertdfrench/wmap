@@ -1,176 +1,63 @@
 #!/usr/bin/env python3
+from dataclasses import dataclass
+from enum import Enum, auto
+from urllib import request
 
-import argparse
-import subprocess
-import os
-import urllib.request
-import tempfile
-import json
-import base64
+NAMESPACE = "wmap@wmap.dev"
 
-# Define the namespace
-NAMESPACE = 'namespaces="wmap@wmap.dev"'
+class Algorithm(Enum):
+    RSA = auto()
+    ED25519 = auto()
 
-# Function to sign a message
-def sign_message(private_key_path, message):
-    with tempfile.NamedTemporaryFile(delete=False) as message_file:
-        message_file.write(message)
-        message_file_path = message_file.name
+    @classmethod
+    def parse(cls, string):
+        if string == "ssh-rsa":
+            return cls.RSA
+        elif string == "ssh-ed25519":
+            return cls.ED25519
+        else:
+            raise "Unknown ssh key algorithm"
 
-    signature_file_path = f"{message_file_path}.sig"
+    def __str__(self):
+        if self == Algorithm.RSA:
+            return "ssh-rsa"
+        if self == Algorithm.ED25519:
+            return "ssh-ed25519"
 
-    print(f"[DEBUG] Signing message:\n{message.decode('utf-8')}")
-    print(f"[DEBUG] Using message file: {message_file_path}")
-    print(f"[DEBUG] Signature file will be: {signature_file_path}")
 
-    # Sign the message using ssh-keygen
-    subprocess.run([
-        'ssh-keygen',
-        '-Y', 'sign',
-        '-f', private_key_path,
-        '-n', 'wmap@wmap.dev',
-        message_file_path
-    ], check=True)
+@dataclass
+class AuthorizedKey:
+    algorithm: Algorithm
+    material: str
+    comment: str
 
-    # Read the signature from the file
-    with open(signature_file_path, 'rb') as f:
-        signature = f.read().decode().strip()
+    @classmethod
+    def parse(cls, string):
+        parts = string.split()
+        algorithm = Algorithm.parse(parts[0])
+        return cls(algorithm, parts[1], " ".join(parts[2:]))
 
-    print(f"[DEBUG] Signature:\n{signature}")
+    def into_allowed_signer(self, profile):
+        principal = profile.url
+        algorithm = str(self.algorithm)
+        material = self.material
+        return f"{principal} namespaces=\"{NAMESPACE}\" {algorithm} {material}"
 
-    # Clean up the temporary files
-    os.remove(message_file_path)
-    os.remove(signature_file_path)
 
-    return signature
+@dataclass
+class Profile:
+    url: str
 
-# Function to fetch public keys from a URL
-def fetch_public_keys(url):
-    with urllib.request.urlopen(url) as response:
-        public_keys = response.read().decode()
-    return public_keys
+    def authorized_keys_url(self):
+        return self.url + ".keys"
 
-# Function to create allowed signers file
-def create_allowed_signers_file(principal, public_keys):
-    allowed_signers_file = tempfile.NamedTemporaryFile(delete=False)
-    with allowed_signers_file as f:
-        for key in public_keys.splitlines():
-            f.write(f"{principal} {NAMESPACE} {key}\n".encode())
-    print(f"[DEBUG] Allowed signers file content:\n{open(allowed_signers_file.name).read()}")
-    return allowed_signers_file.name
+    def authorized_keys(self):
+        with request.urlopen(self.authorized_keys_url()) as response:
+            lines = response.read().decode().splitlines()
+            return [AuthorizedKey.parse(line) for line in lines]
 
-# Function to verify a signature
-def verify_signature(allowed_signers_file, principal, message, signature):
-    with tempfile.NamedTemporaryFile(delete=False) as message_file:
-        message_file.write(message)
-        message_file_path = message_file.name
-
-    with tempfile.NamedTemporaryFile(delete=False) as signature_file:
-        signature_file.write(signature.encode())
-        signature_file_path = signature_file.name
-
-    print(f"[DEBUG] Verifying message:\n{message.decode('utf-8')}")
-    print(f"[DEBUG] Using message file: {message_file_path}")
-    print(f"[DEBUG] Using signature file: {signature_file_path}")
-
-    # Verify the signature using ssh-keygen
-    result = subprocess.run([
-        'ssh-keygen',
-        '-Y', 'verify',
-        '-f', allowed_signers_file,
-        '-I', principal,
-        '-n', 'file',
-        '-s', signature_file_path,
-        '-m', message_file_path
-    ], capture_output=True, text=True)
-
-    print(f"[DEBUG] Verification result: {result.stdout.strip()}")
-    print(f"[DEBUG] Verification error (if any): {result.stderr.strip()}")
-
-    # Clean up the temporary files
-    os.remove(message_file_path)
-    # os.remove(signature_file_path)
-
-    return result.returncode == 0
-
-# Function to create JSON document
-def create_json_document(principal, message, signature):
-    message_base64 = base64.b64encode(message).decode('utf-8')
-
-    document = {
-        "principal": principal,
-        "message": message_base64,
-        "signature": signature
-    }
-
-    return json.dumps(document, indent=2)
-
-# Subcommand to sign a file
-def sign_command(args):
-    with open(args.file, 'rb') as f:
-        message = f.read()
-
-    signature = sign_message(args.private_key, message)
-
-    json_document = create_json_document(args.principal, message, signature)
-    print("JSON Document:")
-    print(json_document)
-
-# Subcommand to verify a JSON document
-def verify_command(args):
-    with open(args.json_file, 'r') as f:
-        document = json.load(f)
-
-    principal = document['principal']
-    message = base64.b64decode(document['message'])
-    signature = document['signature']
-
-    keys_url = f"{principal}.keys"
-    public_keys = fetch_public_keys(keys_url)
-    allowed_signers_file_path = create_allowed_signers_file(principal, public_keys)
-
-    is_valid = verify_signature(allowed_signers_file_path, principal, message, signature)
-    print(f"Signature valid: {is_valid}")
-
-    os.remove(allowed_signers_file_path)
-
-# Subcommand to show allowed signers file
-def diagnostic_command(args):
-    keys_url = f"{args.principal}.keys"
-    public_keys = fetch_public_keys(keys_url)
-
-    print(f"Allowed Signers File for {args.principal}:\n")
-    for key in public_keys.splitlines():
-        print(f"{args.principal} {NAMESPACE} {key}")
-
-# Main function to handle command-line arguments
-def main():
-    parser = argparse.ArgumentParser(description="Sign and verify messages using ssh-keygen")
-    subparsers = parser.add_subparsers(title="subcommands", description="valid subcommands", help="sub-command help", dest="subcommand")
-
-    # Subcommand to sign a file
-    parser_sign = subparsers.add_parser('sign', help="Sign a file")
-    parser_sign.add_argument('file', type=str, help="The file to sign")
-    parser_sign.add_argument('private_key', type=str, help="Path to the private key")
-    parser_sign.add_argument('principal', type=str, help="Principal (e.g., URL to GitHub profile)")
-    parser_sign.set_defaults(func=sign_command)
-
-    # Subcommand to verify a JSON document
-    parser_verify = subparsers.add_parser('verify', help="Verify a JSON document")
-    parser_verify.add_argument('json_file', type=str, help="The JSON file to verify")
-    parser_verify.set_defaults(func=verify_command)
-
-    # Subcommand to show allowed signers file
-    parser_diagnostic = subparsers.add_parser('diagnostic', help="Show allowed signers file for a principal")
-    parser_diagnostic.add_argument('principal', type=str, help="Principal (e.g., URL to GitHub profile)")
-    parser_diagnostic.set_defaults(func=diagnostic_command)
-
-    args = parser.parse_args()
-
-    if args.subcommand is None:
-        parser.print_help()
-    else:
-        args.func(args)
+    def allowed_signers(self):
+        return [k.into_allowed_signer(self) for k in self.authorized_keys()]
 
 if __name__ == "__main__":
-    main()
+	print("Hello")
