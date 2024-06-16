@@ -106,3 +106,9 @@ def test_signature_dump():
         sig.dump(f.name)
         with open(f.name) as message:
             assert message.read() == "Hello World!"
+
+
+def test_profile_verify_signed_file():
+    profile = wmap.Profile("https://github.com/robertdfrench")
+    with open("tests/message.txt", 'rb') as f:
+        assert profile.verify_signed_data(f.read(), "tests/message.txt.sig")

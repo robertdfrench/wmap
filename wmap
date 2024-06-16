@@ -2,8 +2,9 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from urllib import request
-import subprocess
 import base64
+import subprocess
+import tempfile
 
 
 NAMESPACE = "wmap@wmap.dev"
@@ -62,6 +63,20 @@ class Profile:
 
     def allowed_signers(self):
         return [k.into_allowed_signer(self) for k in self.authorized_keys()]
+
+    def verify_signed_data(self, data, signature_path):
+        with tempfile.NamedTemporaryFile() as asf:
+            signers = "\n".join(self.allowed_signers()) + "\n"
+            asf.write(bytes(signers, 'utf-8'))
+            asf.flush()
+            results = subprocess.run([
+                'ssh-keygen', '-Y', 'verify',
+                '-f', asf.name,
+                '-I', self.url,
+                '-n', NAMESPACE,
+                '-s', signature_path
+            ], input=data)
+            return results.returncode == 0
 
 
 @dataclass
