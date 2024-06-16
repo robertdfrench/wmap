@@ -113,5 +113,19 @@ class Signature:
             f.write(decoded)
 
 
+@dataclass
+class Message:
+    profile: Profile
+    body: bytes
+    signature: Signature
+
+    @classmethod
+    def load(cls, profile: Profile, path: str) -> 'Message':
+        with open(path, 'rb') as f:
+            body = f.read()
+        signature = Signature.load(path + ".sig")
+        return cls(profile, body, signature)
+
+
 if __name__ == "__main__":  # pragma: no cover
     print("Hello")

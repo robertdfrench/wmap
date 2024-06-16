@@ -112,3 +112,14 @@ def test_profile_verify_signed_file():
     profile = wmap.Profile("robertdfrench")
     with open("tests/message.txt", 'rb') as f:
         assert profile.verify_signed_data(f.read(), "tests/message.txt.sig")
+
+
+def test_message_load_from_files():
+    profile = wmap.Profile("robertdfrench")
+    message = wmap.Message.load(profile, "tests/message.txt")
+    assert message.profile == profile
+    expected_body = b'My name is Robert French, and I hope you think WMAP is '
+    expected_body += b'as neat as I do!\n'
+    assert message.body == expected_body
+    signature = wmap.Signature.load("tests/message.txt.sig")
+    assert message.signature == signature
