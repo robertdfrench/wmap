@@ -1,9 +1,17 @@
 venv=. .venv/bin/activate &&
 
-test: .venv/ready
-	$(venv) pytest
+test: lint typecheck check
 
-.venv/ready: requirements.txt .venv/update
+check: .venv/ready
+	$(venv) pytest --cov=. --cov-fail-under=100
+
+lint: .venv/ready
+	$(venv) flake8 wmap tests/test_wmap.py
+
+typecheck: .venv/ready
+	$(venv) mypy wmap
+
+.venv/ready: dev-requirements.txt .venv/update
 	$(venv) pip install -r $<
 	touch $@
 
