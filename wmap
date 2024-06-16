@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from urllib import request
+from typing import List
 import base64
 import subprocess
 import tempfile
@@ -15,13 +16,13 @@ class Algorithm(Enum):
     ED25519 = auto()
 
     @classmethod
-    def parse(cls, string):
+    def parse(cls, string: str) -> 'Algorithm':
         if string == "ssh-rsa":
             return cls.RSA
         elif string == "ssh-ed25519":
             return cls.ED25519
         else:
-            raise "Unknown ssh key algorithm"
+            raise Exception("Unknown ssh key algorithm")
 
     def __str__(self):
         if self == Algorithm.RSA:
@@ -37,12 +38,12 @@ class AuthorizedKey:
     comment: str
 
     @classmethod
-    def parse(cls, string):
+    def parse(cls, string: str) -> 'AuthorizedKey':
         parts = string.split()
         algorithm = Algorithm.parse(parts[0])
         return cls(algorithm, parts[1], " ".join(parts[2:]))
 
-    def into_allowed_signer(self, profile):
+    def into_allowed_signer(self, profile: 'Profile') -> str:
         principal = profile.url
         algorithm = str(self.algorithm)
         material = self.material
@@ -53,18 +54,18 @@ class AuthorizedKey:
 class Profile:
     url: str
 
-    def authorized_keys_url(self):
+    def authorized_keys_url(self) -> str:
         return self.url + ".keys"
 
-    def authorized_keys(self):
+    def authorized_keys(self) -> List[AuthorizedKey]:
         with request.urlopen(self.authorized_keys_url()) as response:
             lines = response.read().decode().splitlines()
             return [AuthorizedKey.parse(line) for line in lines]
 
-    def allowed_signers(self):
+    def allowed_signers(self) -> List[str]:
         return [k.into_allowed_signer(self) for k in self.authorized_keys()]
 
-    def verify_signed_data(self, data, signature_path):
+    def verify_signed_data(self, data: bytes, signature_path: str) -> bool:
         with tempfile.NamedTemporaryFile() as asf:
             signers = "\n".join(self.allowed_signers()) + "\n"
             asf.write(bytes(signers, 'utf-8'))
@@ -84,13 +85,13 @@ class PrivateKey:
     profile: Profile
     path: str
 
-    def sign(self, file):
+    def sign(self, file: str):
         subprocess.run([
             'ssh-keygen', '-Y', 'sign',
             '-f', self.path,
             '-n', NAMESPACE,
             file
-        ])
+        ], check=True)
 
 
 @dataclass
@@ -98,12 +99,12 @@ class Signature:
     content: str
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> 'Signature':
         with open(path) as f:
             content = str(base64.b64encode(bytes(f.read(), 'utf-8')), 'utf-8')
             return cls(content)
 
-    def dump(self, path):
+    def dump(self, path: str):
         with open(path, 'w') as f:
             decoded = str(base64.b64decode(self.content), 'utf-8')
             f.write(decoded)
