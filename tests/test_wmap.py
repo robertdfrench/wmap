@@ -14,6 +14,11 @@ from . import wmap
 
 @pytest.fixture
 def ssh_private_key_path():
+    """
+    Create a temporary ssh keypair which can be used for testing. This function
+    yields the path to the private key, and destroys both the public and
+    private keys once all tests have completed.
+    """
     # Create a temporary directory to store the key pair
     with tempfile.TemporaryDirectory() as temp_dir:
         private_key_path = os.path.join(temp_dir, "id_ed25519")
@@ -27,37 +32,34 @@ def ssh_private_key_path():
         yield private_key_path
 
 
-def test_algorithm_rsa():
+def test_algorithm_parse():
+    """
+    Ensure that we can parse ssh key algorithm strings into Algorithm enums.
+    """
     rsa = wmap.Algorithm.parse("ssh-rsa")
     assert rsa == wmap.Algorithm.RSA
-
-
-def test_algorithm_ed25519():
     ed25519 = wmap.Algorithm.parse("ssh-ed25519")
     assert ed25519 == wmap.Algorithm.ED25519
-
-
-def test_algorithm_bogus():
     with pytest.raises(Exception):
         wmap.Algorithm.parse("ssh-junk")
 
 
 def test_authorized_key_parse_algorithm():
+    """
+    Ensure that we can parse an authorized key record into an AuthorizedKey
+    object, with each field intact.
+    """
     key = wmap.AuthorizedKey.parse("ssh-rsa abc123 blah blah blah")
     assert key.algorithm == wmap.Algorithm.RSA
-
-
-def test_authorized_key_parse_material():
-    key = wmap.AuthorizedKey.parse("ssh-rsa abc123 blah blah blah")
     assert key.material == "abc123"
-
-
-def test_authorized_key_parse_comment():
-    key = wmap.AuthorizedKey.parse("ssh-rsa abc123 blah blah blah")
     assert key.comment == "blah blah blah"
 
 
 def test_authorized_key_into_allowed_signer():
+    """
+    Show that we can convert an authorized key record into an ALLOWED SIGNERS
+    record (as described in ssh-keygen(1)).
+    """
     key = wmap.AuthorizedKey.parse("ssh-rsa abc123 blah blah blah")
     profile = wmap.Profile("example")
     signer = key.into_allowed_signer(profile)
@@ -65,6 +67,9 @@ def test_authorized_key_into_allowed_signer():
 
 
 def test_profile_key_url():
+    """
+    Turn a github username into a URL for that user's SSH public keys.
+    """
     username = "robertdfrench"
     authorized_keys_url = "https://github.com/robertdfrench.keys"
     profile = wmap.Profile(username)
@@ -72,19 +77,35 @@ def test_profile_key_url():
 
 
 def test_profile_fetch_authorized_keys_text():
+    """
+    Show that a valid github username (in this case, my own) has more than zero
+    keys.
+    """
     profile = wmap.Profile("robertdfrench")
     authorized_keys = profile.authorized_keys()
     assert len(authorized_keys) > 0
 
 
 def test_profile_allowed_signers():
+    """
+    Show that we can construct a list of ALLOWED SIGNERS for each key in a
+    github user's profile. Without knowing the key material ahead of time, all
+    we can do is spot check the format of the ALLOWED SIGNERS records.
+
+    See ssh-keygen(1) for more information on this format.
+    """
     profile = wmap.Profile("robertdfrench")
     for signer in profile.allowed_signers():
         assert signer.startswith("robertdfrench")
+        assert "wmap@wmap.dev" in signer
 
 
 def test_private_key_signing(ssh_private_key_path):
-    profile = wmap.Profile("robertdfrench")
+    """
+    Show that we can sign a file (and produce an OpenSSH signatre) using the
+    temporary private key.
+    """
+    profile = wmap.Profile("example")
     private_key = wmap.PrivateKey(profile, ssh_private_key_path)
     with tempfile.NamedTemporaryFile() as f:
         f.write(b"Hello World!")
@@ -95,6 +116,10 @@ def test_private_key_signing(ssh_private_key_path):
 
 
 def test_signature_load():
+    """
+    Show that we can load a fake signature (really, just a text file) and
+    compare it against its known base64 representation.
+    """
     with tempfile.NamedTemporaryFile() as f:
         f.write(b"Hello World!")
         f.flush()
@@ -103,6 +128,11 @@ def test_signature_load():
 
 
 def test_signature_dump():
+    """
+    Show that we can store a signature file to disk in its original format. In
+    this case, we use a fake "signature" (the phrase Hello, World) for
+    simplicity.
+    """
     with tempfile.NamedTemporaryFile() as f:
         f.write(b"Hello World!")
         f.flush()
@@ -115,23 +145,34 @@ def test_signature_dump():
 
 
 def test_profile_verify_signed_file():
+    """
+    Using a file that was signed by me and checked into this repo, verify its
+    signature against the SSH public keys on my github profile.
+    """
     profile = wmap.Profile("robertdfrench")
     with open("tests/message.txt", 'rb') as f:
         assert profile.verify_signed_data(f.read(), "tests/message.txt.sig")
 
 
 def test_message_load_from_files():
+    """
+    Show that we can construt a Message object from a file, a profile, and a
+    signature.
+    """
     profile = wmap.Profile("robertdfrench")
     message = wmap.Message.from_signed_file(profile, "tests/message.txt")
     assert message.profile == profile
-    expected_body = b'My name is Robert French, and I hope you think WMAP is '
-    expected_body += b'as neat as I do!\n'
-    assert message.body == expected_body
-    signature = wmap.Signature.load("tests/message.txt.sig")
-    assert message.signature == signature
+    assert message.body == b'My name is Robert French, and I hope you think WMAP is as neat as I do!\n'  # noqa: E501
+    assert message.signature == wmap.Signature.load("tests/message.txt.sig")
 
 
 def test_message_into_dict():
+    """
+    Show that we can turn a Message object into a python dictionary (which
+    would then be turned into JSON). The body and signature here are
+    base64-encoded versions of the tests/messages.txt and
+    tests/messages.txt.sig files, respectively.
+    """
     profile = wmap.Profile("robertdfrench")
     message = wmap.Message.from_signed_file(profile, "tests/message.txt")
     d = message.into_dict()
@@ -141,6 +182,12 @@ def test_message_into_dict():
 
 
 def test_message_dump():
+    """
+    Show that we once we write a Message object to disk, it can be loaded into
+    memory as a dictionary (via json.load) whose fields should match the values
+    below.  The body and signature here are base64-encoded versions of the
+    tests/messages.txt and tests/messages.txt.sig files, respectively.
+    """
     profile = wmap.Profile("robertdfrench")
     message = wmap.Message.from_signed_file(profile, "tests/message.txt")
     with tempfile.NamedTemporaryFile() as f:
@@ -153,6 +200,10 @@ def test_message_dump():
 
 
 def test_message_load():
+    """
+    Show that we can load a Message object from disk. We compare that object to
+    its constituent parts.
+    """
     profile = wmap.Profile("robertdfrench")
     signature = wmap.Signature.load("tests/message.txt.sig")
     message = wmap.Message.from_signed_file(profile, "tests/message.txt")
