@@ -44,7 +44,7 @@ class AuthorizedKey:
         return cls(algorithm, parts[1], " ".join(parts[2:]))
 
     def into_allowed_signer(self, profile: 'Profile') -> str:
-        principal = profile.url
+        principal = profile.username
         algorithm = str(self.algorithm)
         material = self.material
         return f"{principal} namespaces=\"{NAMESPACE}\" {algorithm} {material}"
@@ -52,10 +52,13 @@ class AuthorizedKey:
 
 @dataclass
 class Profile:
-    url: str
+    username: str
+
+    def url(self) -> str:
+        return f"https://github.com/{self.username}"
 
     def authorized_keys_url(self) -> str:
-        return self.url + ".keys"
+        return self.url() + ".keys"
 
     def authorized_keys(self) -> List[AuthorizedKey]:
         with request.urlopen(self.authorized_keys_url()) as response:
@@ -73,7 +76,7 @@ class Profile:
             results = subprocess.run([
                 'ssh-keygen', '-Y', 'verify',
                 '-f', asf.name,
-                '-I', self.url,
+                '-I', self.username,
                 '-n', NAMESPACE,
                 '-s', signature_path
             ], input=data)

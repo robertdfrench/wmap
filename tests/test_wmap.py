@@ -59,26 +59,26 @@ def test_authorized_key_into_allowed_signer():
 
 
 def test_profile_key_url():
-    profile_url = "https://github.com/robertdfrench"
+    username = "robertdfrench"
     authorized_keys_url = "https://github.com/robertdfrench.keys"
-    profile = wmap.Profile(profile_url)
+    profile = wmap.Profile(username)
     assert profile.authorized_keys_url() == authorized_keys_url
 
 
 def test_profile_fetch_authorized_keys_text():
-    profile = wmap.Profile("https://github.com/robertdfrench")
+    profile = wmap.Profile("robertdfrench")
     authorized_keys = profile.authorized_keys()
     assert len(authorized_keys) > 0
 
 
 def test_profile_allowed_signers():
-    profile = wmap.Profile("https://github.com/robertdfrench")
+    profile = wmap.Profile("robertdfrench")
     for signer in profile.allowed_signers():
-        assert signer.startswith("https://github.com/robertdfrench")
+        assert signer.startswith("robertdfrench")
 
 
 def test_private_key_signing(ssh_private_key_path):
-    profile = wmap.Profile("https://github.com/robertdfrench")
+    profile = wmap.Profile("robertdfrench")
     private_key = wmap.PrivateKey(profile, ssh_private_key_path)
     with tempfile.NamedTemporaryFile() as f:
         f.write(b"Hello World!")
@@ -109,6 +109,6 @@ def test_signature_dump():
 
 
 def test_profile_verify_signed_file():
-    profile = wmap.Profile("https://github.com/robertdfrench")
+    profile = wmap.Profile("robertdfrench")
     with open("tests/message.txt", 'rb') as f:
         assert profile.verify_signed_data(f.read(), "tests/message.txt.sig")
