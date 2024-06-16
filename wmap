@@ -214,23 +214,48 @@ class AuthorizedKey:
 
 @dataclass
 class Profile:
+    """
+    The GitHub profile associated with `username`
+    """
     username: str
 
     def url(self) -> str:
+        """URL for this user's github profile"""
         return f"https://github.com/{self.username}"
 
     def authorized_keys_url(self) -> str:
+        """URL for this user's ssh public keys"""
         return self.url() + ".keys"
 
     def authorized_keys(self) -> List[AuthorizedKey]:
+        """
+        Grab the user's Authorized Keys from GitHub, transforming each of them
+        into an AuthorizedKey object.
+        """
         with request.urlopen(self.authorized_keys_url()) as response:
             lines = response.read().decode().splitlines()
             return [AuthorizedKey.parse(line) for line in lines]
 
     def allowed_signers(self) -> List[str]:
+        """
+        Transform each Authorized Key into an ALLOWED SIGNERS record
+
+        More information on ALLOWED SIGNERS can be found in the `ssh-keygen(1)`
+        manual page.
+        """
         return [k.into_allowed_signer(self) for k in self.authorized_keys()]
 
     def verify_signed_data(self, data: bytes, signature_path: str) -> bool:
+        """
+        Check whether we have a valid signature for `data` from the current
+        GitHub user.
+
+        Parameters:
+        - data: the bytes which were signed
+        - signature_path: a path to the signature file created by ssh-keygen
+
+        Returns true if the signature matches, false if not.
+        """
         with tempfile.NamedTemporaryFile() as asf:
             signers = "\n".join(self.allowed_signers()) + "\n"
             asf.write(bytes(signers, 'utf-8'))
@@ -250,10 +275,21 @@ class Profile:
 
 @dataclass
 class PrivateKey:
+    """
+    An SSH Private Key for the GitHub user identified by the `profile` object.
+    """
     profile: Profile
     path: str
 
     def sign(self, file: str):
+        """
+        Use this private key to sign the contents of `file`.
+
+        Parameters:
+        - file: the file (on disk) which should be signed
+
+        Upon success, the signature will be stored in `file`.sig.
+        """
         subprocess.run([
             'ssh-keygen', '-Y', 'sign',
             '-f', self.path,
@@ -264,16 +300,40 @@ class PrivateKey:
 
 @dataclass
 class Signature:
+    """
+    The output of ssh-keygen -Y sign
+    """
     content: str
 
     @classmethod
     def load(cls, path: str) -> 'Signature':
+        """
+        Load an SSH signature from a file
+
+        Parameters:
+        - path: path to an SSH signature file
+
+        The SSH signature is stored on disk in a format determined by OpenSSH.
+        This format is line-oriented, which is tricky to work with in a JSON
+        document. As such, we choose to work with a base64-encoded
+        representation of this signature instead.
+        """
         with open(path) as f:
             raw_text = f.read()
             content = str(base64.b64encode(bytes(raw_text, 'utf-8')), 'utf-8')
             return cls(content)
 
     def dump(self, path: str):
+        """
+        Write an SSH signature to disk,
+
+        Parameters:
+        - path: the path where the SSH signature should be written
+
+        Since the SSH signature in a WMAP file (and in this object) is in
+        base64, we need to decode it before writing it to disk so that it
+        matches the format which ssh-keygen expects.
+        """
         with open(path, 'w') as f:
             decoded = str(base64.b64decode(self.content), 'utf-8')
             f.write(decoded)
@@ -284,12 +344,28 @@ class Signature:
 
 @dataclass
 class Message:
+    """
+    A signed copy of the original content, which can be shared with and
+    validated by anyone.
+    """
     profile: Profile
     body: bytes
     signature: Signature
 
     @classmethod
     def from_signed_file(cls, profile: Profile, path: str) -> 'Message':
+        """
+        Create a Message from a file and its signature.
+
+        Parameters:
+        - profile: the GitHub profile of the user who signed this document
+        - path: path to the document which was signed
+
+        Assumptions:
+        The document referenced by `path` should have been signed (using wmap)
+        prior to calling this method. In particular, an OpenSSH-formatted
+        signature file should exist on disk at `path`.sig.
+        """
         with open(path, 'rb') as f:
             body = f.read()
         signature = Signature.load(path + ".sig")
@@ -297,6 +373,12 @@ class Message:
 
     @classmethod
     def load(cls, path: str) -> 'Message':
+        """
+        Load an existing JSON-formatted WMAP message from disk.
+
+        Parameters:
+        - path: path to the JSON-formatted WMAP message
+        """
         with open(path) as f:
             d = json.load(f)
             profile = Profile(d['profile'])
@@ -305,6 +387,10 @@ class Message:
             return cls(profile, body, signature)
 
     def into_dict(self) -> dict[str, str]:
+        """
+        Convert this object into a python dictionary, and convert each of its
+        fields into their string representation.
+        """
         return {
             'profile': str(self.profile),
             'body': str(base64.b64encode(self.body), 'utf-8'),
@@ -312,6 +398,13 @@ class Message:
         }
 
     def dump(self, path: str):
+        """
+        Store this message on disk.
+
+        Parameters:
+        - path: path on disk where this JSON-formatted WMAP message should be
+          written.
+        """
         with open(path, 'w') as f:
             json.dump(self.into_dict(), f)
 
