@@ -80,28 +80,3 @@ where `profile` is your GitHub username, `body` is a base64-encoded copy
 of the data you'd like to send, and `signature` is a WMAP-specific SSH
 signature. A WMAP file contains everything your friends need to verify
 the integrity of your messages!
-
-## FAQ (Fervently Anticipated Questions)
-*Inspired by those of [Hubris][1]*
-
-### Why not just use GPG?
-Weren't you just complaining about Perl? Also do you really want to talk
-to people who [*voluntarily use GPG*][3]?
-
-### Why not just use S/MIME?
-I would love to, I really would. S/MIME could have been a contender.
-Holler at me if you can help me make an S/MIME cert with my own private
-key material, but signed with a certificate authority that my parents'
-phones already trust. I'd toss WMAP in the WTRASHCAN for that.
-
-### Why not just use Signal?
-Signal kicks ass. I strongly recommend Signal over WMAP. Moxie even has
-a blog post which spells out [why WMAP will never compete with
-Signal][4].
-
-
-<!-- # References -->
-[1]: https://github.com/oxidecomputer/hubris/blob/master/FAQ.mkdn
-[2]: https://github.com/git/git/search?l=Perl&q=git
-[3]: https://moxie.org/2015/02/24/gpg-and-me.html
-[4]: https://moxie.org/2022/01/07/web3-first-impressions.html
