@@ -1,1 +1,2 @@
-/tests/run/*
+**/__pycache__/*
+.venv/*

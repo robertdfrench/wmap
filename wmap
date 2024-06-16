@@ -1,169 +1,176 @@
-#!/usr/bin/perl
-use strict;
-use warnings;
+#!/usr/bin/env python3
 
+import argparse
+import subprocess
+import os
+import urllib.request
+import tempfile
+import json
+import base64
 
-########################################################################
-package main;
+# Define the namespace
+NAMESPACE = 'namespaces="wmap@wmap.dev"'
 
-main() unless caller();
+# Function to sign a message
+def sign_message(private_key_path, message):
+    with tempfile.NamedTemporaryFile(delete=False) as message_file:
+        message_file.write(message)
+        message_file_path = message_file.name
 
-sub main {
-    print "Hello, World!";
-}
+    signature_file_path = f"{message_file_path}.sig"
 
+    print(f"[DEBUG] Signing message:\n{message.decode('utf-8')}")
+    print(f"[DEBUG] Using message file: {message_file_path}")
+    print(f"[DEBUG] Signature file will be: {signature_file_path}")
 
-########################################################################
-package AllowedSigners;
+    # Sign the message using ssh-keygen
+    subprocess.run([
+        'ssh-keygen',
+        '-Y', 'sign',
+        '-f', private_key_path,
+        '-n', 'wmap@wmap.dev',
+        message_file_path
+    ], check=True)
 
-sub convert {
-    my $principal = shift;
-    my $namespace = shift;
-    my $pubkey = shift;
+    # Read the signature from the file
+    with open(signature_file_path, 'rb') as f:
+        signature = f.read().decode().strip()
 
-    my ($algorithm, $material) = split(/ /, $pubkey);
+    print(f"[DEBUG] Signature:\n{signature}")
 
-    return "$principal namespaces=\"$namespace\" $algorithm $material";
-}
+    # Clean up the temporary files
+    os.remove(message_file_path)
+    os.remove(signature_file_path)
 
-########################################################################
-package HttpClient;
+    return signature
 
-sub new {
-    my $class = shift;
+# Function to fetch public keys from a URL
+def fetch_public_keys(url):
+    with urllib.request.urlopen(url) as response:
+        public_keys = response.read().decode()
+    return public_keys
 
-    my $self = { };
+# Function to create allowed signers file
+def create_allowed_signers_file(principal, public_keys):
+    allowed_signers_file = tempfile.NamedTemporaryFile(delete=False)
+    with allowed_signers_file as f:
+        for key in public_keys.splitlines():
+            f.write(f"{principal} {NAMESPACE} {key}\n".encode())
+    print(f"[DEBUG] Allowed signers file content:\n{open(allowed_signers_file.name).read()}")
+    return allowed_signers_file.name
 
-    return bless $self, $class;
-}
+# Function to verify a signature
+def verify_signature(allowed_signers_file, principal, message, signature):
+    with tempfile.NamedTemporaryFile(delete=False) as message_file:
+        message_file.write(message)
+        message_file_path = message_file.name
 
-sub download {
-    my $self = shift;
-    my $remote_url = shift;
-    my $local_path = shift;
+    with tempfile.NamedTemporaryFile(delete=False) as signature_file:
+        signature_file.write(signature.encode())
+        signature_file_path = signature_file.name
 
-    my $curl = Subcommand->new("curl");
+    print(f"[DEBUG] Verifying message:\n{message.decode('utf-8')}")
+    print(f"[DEBUG] Using message file: {message_file_path}")
+    print(f"[DEBUG] Using signature file: {signature_file_path}")
 
-    return $curl->invoke(
-        "-s",$remote_url,
-        "-o",$local_path
-    );
-}
+    # Verify the signature using ssh-keygen
+    result = subprocess.run([
+        'ssh-keygen',
+        '-Y', 'verify',
+        '-f', allowed_signers_file,
+        '-I', principal,
+        '-n', 'file',
+        '-s', signature_file_path,
+        '-m', message_file_path
+    ], capture_output=True, text=True)
 
-########################################################################
-package Subcommand;
+    print(f"[DEBUG] Verification result: {result.stdout.strip()}")
+    print(f"[DEBUG] Verification error (if any): {result.stderr.strip()}")
 
-sub new {
-    my $class = shift;
-    my $program = shift;
+    # Clean up the temporary files
+    os.remove(message_file_path)
+    # os.remove(signature_file_path)
 
-    my $self = {'program' => $program};
+    return result.returncode == 0
 
-    return bless $self, $class;
-}
+# Function to create JSON document
+def create_json_document(principal, message, signature):
+    message_base64 = base64.b64encode(message).decode('utf-8')
 
-sub invoke {
-    my $self = shift;
-
-    my $spell = "$self->{'program'}";
-
-    die "Can't fork new Subcommand" unless
-        defined(my $pid = open(CHILD, "-|", $spell, @_));
-
-    if ($pid) {
-        while (<CHILD>) {
-        }
-        close(CHILD);
-        return $?;
-    } else {
-        exec($self->{'program'}, @_) or
-            die "Can't exec $self->{'program'}: $!";
-    }
-}
-
-sub transform {
-    my $self = shift;
-    my $input = shift;
-
-    my $pid = open(CHILD, "|-", "$self->{'program'}", @_);
-
-    die "Can't fork new Subcommand" unless defined($pid);
-
-    if ($pid) {
-        print CHILD $input;
-        close(CHILD);
-        return $?;
-    } else {
-        exec($self->{'program'}, @_) or
-            die "Can't execute $self->{'program'}: $!";
-    }
-}
-
-
-########################################################################
-package SSH::Keygen;
-
-sub new {
-    my $class = shift;
-
-    my $subcommand = Subcommand->new('ssh-keygen');
-    my $self = {
-        'subcommand' => $subcommand
-    };
-
-    return bless $self, $class;
-}
-
-sub sign {
-    my $self = shift;
-    my $key_path = shift;
-    my $namespace = shift;
-    my $message_path = shift;
-
-    return $self->{'subcommand'}->invoke(
-        "-Y", "sign",
-        "-f", $key_path,
-        "-n", $namespace,
-        $message_path
-    );
-}
-
-sub verify {
-    my $self = shift;
-    my $message_path = shift;
-    my $principal = shift;
-    my $namespace = shift;
-    my $allowed_signers_path = shift;
-
-    my $signature_path = "$message_path.sig";
-    my $message;
-    {
-        open(my $fh, '<', $message_path) or
-            die "Can't open '$message_path': $!";
-
-        local $/ = undef;
-        $message = <$fh>;
-        close($fh);
+    document = {
+        "principal": principal,
+        "message": message_base64,
+        "signature": signature
     }
 
-    return $self->{'subcommand'}->transform(
-        $message,
-        "-Y", "verify",
-        "-f", $allowed_signers_path,
-        "-I", $principal,
-        "-n", $namespace,
-        "-s", $signature_path
-    );
-}
+    return json.dumps(document, indent=2)
 
+# Subcommand to sign a file
+def sign_command(args):
+    with open(args.file, 'rb') as f:
+        message = f.read()
 
-########################################################################
-package WMAP;
+    signature = sign_message(args.private_key, message)
 
-sub version {
-    return "0.1.0";
-}
+    json_document = create_json_document(args.principal, message, signature)
+    print("JSON Document:")
+    print(json_document)
 
-sub namespace {
-    return 'wmap@wmap.dev';
-}
+# Subcommand to verify a JSON document
+def verify_command(args):
+    with open(args.json_file, 'r') as f:
+        document = json.load(f)
+
+    principal = document['principal']
+    message = base64.b64decode(document['message'])
+    signature = document['signature']
+
+    keys_url = f"{principal}.keys"
+    public_keys = fetch_public_keys(keys_url)
+    allowed_signers_file_path = create_allowed_signers_file(principal, public_keys)
+
+    is_valid = verify_signature(allowed_signers_file_path, principal, message, signature)
+    print(f"Signature valid: {is_valid}")
+
+    os.remove(allowed_signers_file_path)
+
+# Subcommand to show allowed signers file
+def diagnostic_command(args):
+    keys_url = f"{args.principal}.keys"
+    public_keys = fetch_public_keys(keys_url)
+
+    print(f"Allowed Signers File for {args.principal}:\n")
+    for key in public_keys.splitlines():
+        print(f"{args.principal} {NAMESPACE} {key}")
+
+# Main function to handle command-line arguments
+def main():
+    parser = argparse.ArgumentParser(description="Sign and verify messages using ssh-keygen")
+    subparsers = parser.add_subparsers(title="subcommands", description="valid subcommands", help="sub-command help", dest="subcommand")
+
+    # Subcommand to sign a file
+    parser_sign = subparsers.add_parser('sign', help="Sign a file")
+    parser_sign.add_argument('file', type=str, help="The file to sign")
+    parser_sign.add_argument('private_key', type=str, help="Path to the private key")
+    parser_sign.add_argument('principal', type=str, help="Principal (e.g., URL to GitHub profile)")
+    parser_sign.set_defaults(func=sign_command)
+
+    # Subcommand to verify a JSON document
+    parser_verify = subparsers.add_parser('verify', help="Verify a JSON document")
+    parser_verify.add_argument('json_file', type=str, help="The JSON file to verify")
+    parser_verify.set_defaults(func=verify_command)
+
+    # Subcommand to show allowed signers file
+    parser_diagnostic = subparsers.add_parser('diagnostic', help="Show allowed signers file for a principal")
+    parser_diagnostic.add_argument('principal', type=str, help="Principal (e.g., URL to GitHub profile)")
+    parser_diagnostic.set_defaults(func=diagnostic_command)
+
+    args = parser.parse_args()
+
+    if args.subcommand is None:
+        parser.print_help()
+    else:
+        args.func(args)
+
+if __name__ == "__main__":
+    main()
