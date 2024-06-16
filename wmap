@@ -36,12 +36,23 @@ def main():  # pragma: no cover
     parser_verify.add_argument(
             'file', type=str, help='Signed file to be verified')
 
+    # Subparser for the 'extract' command
+    parser_extract = subparsers.add_parser(
+            'extract', help='Extract a signed file')
+    parser_extract.add_argument(
+            '--skip-validation', action='store_true',
+            help='Something is very wrong if you need to use this flag')
+    parser_extract.add_argument(
+            'file', type=str, help='Signed file to be extracted')
+
     args = parser.parse_args()
 
     if args.command == 'sign':
         sign(args.username, args.key, args.file)
     elif args.command == 'verify':
         verify(args.file)
+    elif args.command == 'extract':
+        extract(args.file)
     else:
         parser.print_help()
 
@@ -61,7 +72,14 @@ def verify(file: str):  # pragma: no cover
     valid = message.profile.verify_signed_data(message.body, file + ".sig")
     os.remove(file + ".sig")
     if not valid:
+        print("This document is not valid", file=sys.stderr)
         sys.exit(1)
+
+
+def extract(file: str):  # pragma: no cover
+    verify(file)
+    message = Message.load(file)
+    print(str(message.body, 'utf-8'))
 
 
 class Algorithm(Enum):
@@ -132,7 +150,7 @@ class Profile:
                 '-I', self.username,
                 '-n', NAMESPACE,
                 '-s', signature_path
-            ], input=data)
+            ], input=data, capture_output=True)
             return results.returncode == 0
 
     def __str__(self) -> str:

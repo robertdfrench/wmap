@@ -41,12 +41,13 @@ you can send to your friends!
 To verify a signed document, you only need the `.wmap` file created in the previous step.
 
 ```bash
-./wmap verify <file>
+./wmap verify <file>.wmap
 ```
 
-where `<file>` is the path to the signed file (with `.wmap` extension).
-
-If the verification is successful, the command will complete without any output. If the verification fails, the script will exit with a non-zero status.
+where `<file>.wmap` is the path to the signed WMAP file.  If the
+verification is successful, the command will complete without any
+output. If the verification fails, the script will exit with a non-zero
+status.
 
 ### Extracting a Document from a Verified Message
 If you've received a WMAP message from a friend, they probably want you
@@ -54,18 +55,17 @@ to read the message inside. To extract this message, use the `extract`
 command:
 
 ```bash
-./wmap extract <file>
+./wmap extract <file>.wmap
 ```
 
-This will fail if the wmap file cannot be verified.  If you need to
-extract it anyways, you can do this:
+This will print the body of `<file>.wmap` to stdout.
+
+Keep in mind that this command will fail if the wmap file cannot be
+verified.  If you need to extract it anyways, you can do this:
 
 ```bash
-./wmap extract --i-know-this-document-is-not-valid <file>
+./wmap extract --skip-validation <file>.wmap
 ```
-
-If your wmap file is called `file.txt.wmap`, this command will save the
-body of the message into a file called `file.txt`.
 
 ## Message Structure
 WMAP messages have the following structure:
