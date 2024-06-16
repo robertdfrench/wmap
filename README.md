@@ -2,19 +2,19 @@
 *The Web-based Message Authentication Protocol*
 
 WMAP lets you validate messages against your friends' SSH pubkeys.
-GitHub, GitLab, and BitBucket all post SSH public keys in known
-locations: simply sign your messages as `https://github.com/<USERNAME>`
-and your friends will be able to verify their integrity.
+Since your GitHub keys are stored in a [known
+location](https://github.com/robertdfrench.keys), signing documents with
+these keys makes it easy for your friends to verify their integrity (and
+the integrity of the documents!).
 
-This repository contains a specification and reference implementation
-for a protocol which can be used for relatively secure internet
-communication. Many such protocols already exist, the goal of this one
-is to see what can be done with tools that software engineers are likely
-to already have lying around: `git`, `ssh`, etc.
+This repository contains a reference implementation for a protocol which
+can be used for moderately trustworthy internet communication. Many such
+protocols already exist, the goal of this one is to see what can be done
+with tools that software engineers are likely to already have lying
+around: `git`, `ssh`, etc.
 
-Particularly, WMAP aims to take advantage of the fact that git hosts
-like GitHub, GitLab, etc tend to make users' SSH public keys available
-in a [known location](https://github.com/robertdfrench.keys):
+Here's how it works at a high level:
+
 ```mermaid
 sequenceDiagram
     Alice->>GitHub: Upload SSH Pubkey
