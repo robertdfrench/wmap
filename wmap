@@ -4,6 +4,20 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
 # Copyright 2024 Robert D. French
+"""
+The Web-based Message Authentication Protocol
+
+WMAP allows secure exchange of signed messages between users using their GitHub
+SSH keys. This tool allows you to sign, verify, and extract messages.
+
+Key features:
+- Sign messages using SSH keys linked to GitHub accounts
+- Verify the authenticity and integrity of signed messages
+- Extract the content of signed messages
+
+This module implements the core functionality of WMAP, including command-line
+interface, cryptographic operations, and file handling.
+"""
 import argparse
 import base64
 from dataclasses import dataclass
@@ -17,6 +31,9 @@ import sys
 import tempfile
 
 
+# This is the SSH signing namespace that we use for wmap messages. This is to
+# distinguish WMAP signatures from other SSH signin functions, as encouraged by
+# the ssh-keygen(1) man page.
 NAMESPACE = "wmap@wmap.dev"
 
 
@@ -26,17 +43,30 @@ def main():  # pragma: no cover
 
     This is the application entrypoint (called at the end of this file in
     the traditional python fashion). It assembles the command line interface
-    via argparse, and then passes control to one of the subcommand functions:
-    sign, verify, or extract.
+    via argparse, and then passes control to one of the subcommand functions.
+
+    Subcommands:
+    - sign: Sign a file using your GitHub username and SSH key
+    - verify: Verify the authenticity of a signed file
+    - extract: Extract the content of a signed file, with an option to skip
+      validation
 
     QA note: This function is not covered in unit testing as it is part of the
     user interface.
     """
+    # Setup the command line argument parser.
+    #
+    # This parser will read the comand line arguments provided by the user and
+    # turn them into a structure that we can query. This will allow us to
+    # determine what actions to perform later on.
+    #
+    # If you have not worked with argparse before, check out the tutorial:
+    # https://docs.python.org/3/howto/argparse.html#argparse-tutorial
     parser = argparse.ArgumentParser(
             description='wmap.py: A tool to sign or verify files.')
     subparsers = parser.add_subparsers(dest='command', help='sub-command help')
 
-    # Subparser for the 'sign' command
+    # Setup subparser for the 'sign' command
     parser_sign = subparsers.add_parser(
             'sign', help='Sign a file')
     parser_sign.add_argument(
@@ -46,13 +76,13 @@ def main():  # pragma: no cover
     parser_sign.add_argument(
             'file', type=str, help='File to be signed')
 
-    # Subparser for the 'verify' command
+    # Setup subparser for the 'verify' command
     parser_verify = subparsers.add_parser(
             'verify', help='Verify a signed file')
     parser_verify.add_argument(
             'file', type=str, help='Signed file to be verified')
 
-    # Subparser for the 'extract' command
+    # Setup subparser for the 'extract' command
     parser_extract = subparsers.add_parser(
             'extract', help='Extract a signed file')
     parser_extract.add_argument(
@@ -63,6 +93,8 @@ def main():  # pragma: no cover
 
     args = parser.parse_args()
 
+    # Call the appropriate function based on the subcommand. Each subcommand is
+    # handled by its own function, and each expects different arguments.
     if args.command == 'sign':
         sign(args.username, args.key, args.file)
     elif args.command == 'verify':
@@ -75,28 +107,33 @@ def main():  # pragma: no cover
 
 def sign(username: str, key: str, file: str):  # pragma: no cover
     """
-    Produce a signed, WMAP-formatted version of the input file.
+    Sign a file using the specified GitHub username and SSH key.
+
+    This function creates a WMAP-formatted, signed version of the input file.
 
     Parameters:
-    - username: the GitHub username of the author of `file`
-    - key: the path to the ssh private key of the author. The corresponding
-      public key must be installed on the author's GitHub account.
-    - file: the path to the file being signed
+    - username: The GitHub username of the file's author
+    - key: Path to the SSH private key of the author
+    - file: Path to the file being signed
 
-    Upon success, a WMAP-formatted file called `file`.wmap will be created in
-    the same directory as `file`.
+    Output:
+    - Creates a new file named '{file}.wmap' containing the signed message.
+
+    Note: The public key corresponding to the private key must be installed on
+    the author's GitHub account.
     """
-    profile = Profile(username)
-    private_key = PrivateKey(profile, key)
-    private_key.sign(file)
-    message = Message.from_signed_file(profile, file)
-    message.dump(file + ".wmap")
-    os.remove(file + ".sig")
+    profile = Profile(username)             # Load *your* github Profile
+    private_key = PrivateKey(profile, key)  # Load *your* SSH Private Key
+    private_key.sign(file)                  # Sign `file` with your SSH key
+    message = Message.from_signed_file(
+            profile, file)                  # Load everything into one object
+    message.dump(file + ".wmap")            # Write WMAP-formatted msg to disk
+    os.remove(file + ".sig")                # Remove temporary sig file
 
 
 def verify(file: str):  # pragma: no cover
     """
-    Verify the integrity of a WMAP-formatted file.
+    Verify the signature of a WMAP-formatted file.
 
     Parameters:
     - file: the path to a WMAP-formatted file
@@ -107,10 +144,12 @@ def verify(file: str):  # pragma: no cover
     QA note: This function is not covered in unit testing as it is part of the
     user interface.
     """
-    message = Message.load(file)
-    message.signature.dump(file + ".sig")
-    valid = message.profile.verify_signed_data(message.body, file + ".sig")
-    os.remove(file + ".sig")
+    sigfile = file + ".sig"
+    message = Message.load(file)     # Load message from disk
+    message.signature.dump(sigfile)  # Extract signature temporarily
+    valid = message.profile.verify_signed_data(
+            message.body, sigfile)   # Check signature against profile & body
+    os.remove(sigfile)               # Remove temporary signature
     if not valid:
         print("This document is not valid", file=sys.stderr)
         sys.exit(1)
@@ -127,8 +166,9 @@ def extract(file: str, skip_validation: bool = False):  # pragma: no cover
     QA note: This function is not covered in unit testing as it is part of the
     user interface.
     """
-    if not skip_validation:
+    if not skip_validation:  # Read this as 'if validate == True'
         verify(file)
+    # If the message has a good signature, extract and print the body
     message = Message.load(file)
     print(str(message.body, 'utf-8'))
 
@@ -136,6 +176,10 @@ def extract(file: str, skip_validation: bool = False):  # pragma: no cover
 class Algorithm(Enum):
     """
     Allowable algorithms for SSH signing keys.
+
+    Not all SSH key algorithms support signing. RSA and ED25519 do, so when
+    parsing an Allowed Signers record or an Authorized Key record, we want to
+    restrict ourselves to those two algorithms.
     """
     RSA = auto()
     ED25519 = auto()
@@ -170,7 +214,10 @@ class Algorithm(Enum):
 class AuthorizedKey:
     """
     Representation of an Authorized Key entry, as seen in an
-    ~/.ssh/authorized_keys file or on a user's GitHub profile.
+    ~/.ssh/authorized_keys file.
+
+    See the AUTHORIZED_KEYS_FILE_FORMAT section of the sshd(8) man page for
+    more information about what these files look like.
     """
     algorithm: Algorithm
     material: str
@@ -256,13 +303,16 @@ class Profile:
 
         Returns true if the signature matches, false if not.
         """
-        with tempfile.NamedTemporaryFile() as asf:
+        with tempfile.NamedTemporaryFile() as allowed_signers_file:
             signers = "\n".join(self.allowed_signers()) + "\n"
-            asf.write(bytes(signers, 'utf-8'))
-            asf.flush()
+            # We write and flush together because we need to know for sure that
+            # all these bytes have been written to disk before we try to point
+            # ssh-keygen at this file.
+            allowed_signers_file.write(bytes(signers, 'utf-8'))
+            allowed_signers_file.flush()
             results = subprocess.run([
                 'ssh-keygen', '-Y', 'verify',
-                '-f', asf.name,
+                '-f', allowed_signers_file.name,  # This file was just flushed.
                 '-I', self.username,
                 '-n', NAMESPACE,
                 '-s', signature_path
@@ -320,6 +370,7 @@ class Signature:
         """
         with open(path) as f:
             raw_text = f.read()
+            # Encode the signature bytes file as a Base64 string
             content = str(base64.b64encode(bytes(raw_text, 'utf-8')), 'utf-8')
             return cls(content)
 
@@ -355,7 +406,7 @@ class Message:
     @classmethod
     def from_signed_file(cls, profile: Profile, path: str) -> 'Message':
         """
-        Create a Message from a file and its signature.
+        Create a Message object from a file and its signature.
 
         Parameters:
         - profile: the GitHub profile of the user who signed this document
@@ -410,4 +461,10 @@ class Message:
 
 
 if __name__ == "__main__":  # pragma: no cover
+    # This is a common Python trick.
+    #
+    # The `main` function is only called if this file is being run as a
+    # *program* (in which case the global __name__ variable will be set to
+    # "__main__"). If this file is being used as a library (which is the case
+    # when we run the unit tests), `main` will not be called.
     main()
