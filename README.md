@@ -18,7 +18,7 @@ Here's how it works at a high level:
 ```mermaid
 sequenceDiagram
     Alice->>GitHub: Upload SSH Pubkey
-    Alice->>Alice: Sign Message for Bob
+    Alice->>Alice: Sign a Message
     Alice->>Bob: Send Message to Bob
     Bob->>GitHub: Fetch Alice's Pubkey
     Bob->>Bob: Verify Message Came from Alice
@@ -68,11 +68,12 @@ verified.  If you need to extract it anyways, you can do this:
 ```
 
 ## Protocol Details
-WMAP is a simple protocol based on SSH signatures. The ssh-keygen(1)
-command is intentionally generic, and WMAP is an opinionated refinement
-of that. By bundling the message data, a canonical author name, and the
-signature into a single file, WMAP makes it easier to transfer and
-validate documents signed with ssh keys.
+WMAP is a simple protocol based on SSH signatures. The command which
+creates these signatures ([`ssh-keygen(1)`][1]) is intentionally
+generic, and WMAP is an opinionated refinement of that. By bundling the
+message data, a canonical author name, and the signature into a single
+file, WMAP makes it easier to transfer and validate documents signed
+with ssh keys.
 
 
 ### Message Structure
@@ -131,6 +132,13 @@ flowchart TD
     U -->M
 ```
 
+#### Namespaces
+`ssh-keygen(1)` requires every signing operation to use a *namespace* in
+order to avoid confusing signatures created for differing use cases. The
+[manual entry][1] suggest using the namespace string
+"NAMESPACE@YOUR.DOMAIN" for custom purposes, so WMAP messages use the
+namespace string "wmap@wmap.dev".
+
 
 ### Authentication
 By including the username and signature alongside the message, WMAP
@@ -140,7 +148,7 @@ authentication process works as follows:
 1. The base-64 representations of the message and its signature are
    extracted and stored on disk. 
 2. The author's SSH public keys, as listed on GitHub, are transformed
-   into an "Allowed Signers" file.
+   into an [Allowed Signers][2] file.
 3. The `ssh-keygen(1)` command (specifically the `-Y verify` subcommand)
    is used to verify the message and its signature against the Allowed
    Signers file.
@@ -157,3 +165,33 @@ flowchart TD
     K -->|success| Y[Message was definitely authored by USERNAME.]
     K -->|error| N[Message may not have been authored by USERNAME.]
 ```
+
+#### Allowed Signers
+An [Allowed Signers][2] file is a list of named SSH Public Keys against
+which a message and a signature can be authenticated. For the purposes
+of WMAP, such files have the following format:
+
+    <GitHub Username> namespaces="wmap@wmap.dev" ssh-rsa AAAAX1...
+    <GitHub Username> namespaces="wmap@wmap.dev" ssh-ed25519 AAAB4...
+    ...
+
+The wmap client constructs these files on the fly before each
+authentication operation, so that the latest keys are always pulled from
+GitHub.
+
+`ssh-keygen(1)` requires a file of this format in order to perform
+verification with the `-Y verify` subcommand. WMAP-flavored Allowed
+Signers files could be produced with something along the lines of this
+shell script:
+
+```sh
+GH_USERNAME="robertdfrench"
+curl --silent "https://github.com/${GH_USERNAME}.keys" \
+    | sed 's/^/namespaces="wmap@wmap.dev" /' \
+    | sed "s/^/${GH_USERNAME} /" \
+    > allowed_signers.txt
+```
+
+<!-- REFERENCES -->
+[1]: https://www.man7.org/linux/man-pages/man1/ssh-keygen.1.html
+[2]: https://www.man7.org/linux/man-pages/man1/ssh-keygen.1.html#ALLOWED_SIGNERS
