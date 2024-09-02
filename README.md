@@ -86,8 +86,8 @@ messages need the following three fields:
 - profile: the author's GitHub username
 - body: a Base64-encoded representation of the input message
 - signature: a Base64-encoded representation of the author's SSH
-  signature of the original input message (not the base64
-  representation in the `body` field).
+  signature of the original input message (not a signature of the
+  Base64-encoded `body` field).
 
 It will look something like this:
 
