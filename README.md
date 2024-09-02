@@ -115,6 +115,22 @@ signature file called `message.txt.sig`. WMAP requires that base64-encoded
 versions of these files be bundled into a single document (according to
 the [Message Structure](#message-structure) defined above).
 
+```mermaid
+flowchart TD
+    M(WMAP JSON Message)
+    S(message.txt.sig)
+    B(message.txt)
+    U[GitHub<br/>USERNAME]
+    P(SSH Private Key)
+    K{ssh-keygen -Y sign}
+    P --> K
+    B --> K
+    K --> S
+    S -->|Encode Signature| M
+    B -->|Encode Body| M
+    U -->M
+```
+
 
 ### Authentication
 By including the username and signature alongside the message, WMAP
@@ -128,3 +144,16 @@ authentication process works as follows:
 3. The `ssh-keygen(1)` command (specifically the `-Y verify` subcommand)
    is used to verify the message and its signature against the Allowed
    Signers file.
+
+```mermaid
+flowchart TD
+    M(WMAP JSON Message) -->|Decode Signature| S(message.txt.sig)
+    M -->|Decode Body| B(message.txt)
+    M -->|Download Pubkeys<br/> for USERNAME| G(pubkeys.txt)
+    G -->|Convert to<br/>Allowed Signers| A[(allowed_signers.txt)]
+    B -->K{ssh-keygen -Y verify}
+    S -->K
+    A -->K
+    K -->|success| Y[Message was definitely authored by USERNAME.]
+    K -->|error| N[Message may not have been authored by USERNAME.]
+```
