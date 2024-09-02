@@ -67,16 +67,64 @@ verified.  If you need to extract it anyways, you can do this:
 ./wmap extract --skip-validation <file>.wmap
 ```
 
-## Message Structure
-WMAP messages have the following structure:
+## Protocol Details
+WMAP is a simple protocol based on SSH signatures. The ssh-keygen(1)
+command is intentionally generic, and WMAP is an opinionated refinement
+of that. By bundling the message data, a canonical author name, and the
+signature into a single file, WMAP makes it easier to transfer and
+validate documents signed with ssh keys.
+
+
+### Message Structure
+The central idea behind WMAP is that every GitHub user's SSH public keys
+are available at `https://github.com/<username>.keys`. This means that
+any message signed with one of the corresponding private keys can be
+verified by anyone who knows the author's GitHub username. As such, WMAP
+messages need the following three fields:
+
+- profile: the author's GitHub username
+- body: a Base64-encoded representation of the input message
+- signature: a Base64-encoded representation of the author's SSH
+  signature of the original input message (not the base64
+  representation in the `body` field).
+
+It will look something like this:
+
 ```json
 {
     "profile": "robertdfrench",
-    "body": "SGVsbG8sIHdvcmxkLgo=",
-    "signature": "U1NIU0lHAA...jiam+SDCzaoFiSvw==",
+    "body": "aGVsbG8K",
+    "signature": "LS0tLS1CRUd..."
 }
 ```
-where `profile` is your GitHub username, `body` is a base64-encoded copy
-of the data you'd like to send, and `signature` is a WMAP-specific SSH
-signature. A WMAP file contains everything your friends need to verify
-the integrity of your messages!
+
+Anyone with access to github.com can retrieve the author's public keys
+and verify the message signature against them. *This does mean that if a
+GitHub user removes a public key, messages signed with that key will no
+longer be valid.*
+
+
+### Signing
+Messages are signed using the `ssh-keygen(1)` command, specifically the
+`-Y sign` flag. This signing operation takes an input file (the message
+to be signed), a private key, and a "namespace" -- an identifier to
+distinguish custom signing applications.
+
+For an input file called `message.txt`, ssh-keygen will produce a
+signature file called `message.txt.sig`. WMAP requires that base64-encoded
+versions of these files be bundled into a single document (according to
+the [Message Structure](#message-structure) defined above).
+
+
+### Authentication
+By including the username and signature alongside the message, WMAP
+bundles everything necessary for authentication in one place. The
+authentication process works as follows:
+
+1. The base-64 representations of the message and its signature are
+   extracted and stored on disk. 
+2. The author's SSH public keys, as listed on GitHub, are transformed
+   into an "Allowed Signers" file.
+3. The `ssh-keygen(1)` command (specifically the `-Y verify` subcommand)
+   is used to verify the message and its signature against the Allowed
+   Signers file.
